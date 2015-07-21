@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="Ribbon_Load">
+  <ribbon>
+    <tabs>
+      <tab idMso="TabAddIns" label="Excellizer">
+        <group id="CookieBrowserGroup" label="환경 설정">
+          <button id="CookieSettingButton" size="large" label="쿠키설정" screentip="My Alerts" onAction="CookieSettingButton_OnAction" imageMso="ExportExcel" />
+        </group>
+        
+        <group id="TotalCrawlingGroup" label="전체 불러오기">
+          <button id="UrlSubmit" size="large" label="URL 입력" screentip="My Alerts" onAction="btnDisplayAlert_OnAction" imageMso="ViewsLayoutView" />
+          
+        </group>
+        
+        <group id="CustomCrawlingGroup" label="범위 불러오기">
+          <button id="CustomCrawlingGroupButton" size="large" label="특정 범위 불러오기" screentip="My Alerts" onAction="btnDisplayAlert_OnAction" imageMso="AdpDiagramArrangeTables" />
+        </group>
+        
+
+        <group id="CustomBroswerGroup" label="Browser">
+          <button id="BrowserButton" size="large" label="브라우저 띄우기" screentip="My Alerts" onAction="BrowserButton_OnAction" imageMso="ViewWebLayoutView"/>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>
