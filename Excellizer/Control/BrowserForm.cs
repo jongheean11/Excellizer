@@ -65,6 +65,8 @@ namespace Excellizer.Control
         private Dictionary<Button, IHTMLElement> buttonTargetDictionary_MSHTML;
         private Point docLocation;
 
+        AlertForm alert_Init;
+
         public BrowserForm()
         {
             InitializeComponent();
@@ -171,17 +173,32 @@ namespace Excellizer.Control
 
         void InitializeView()
         {
+            progressValue = 0;
+            if (backgroundWorker_Init.IsBusy != true)
+            {
+                // create a new instance of the alert form
+                alert_Init = new AlertForm();
+                // event handler for the Cancel button in AlertForm
+                ///alert_Init.Canceled += new EventHandler<EventArgs>(alertInitCancelButton_Click);
+                alert_Init.Show();
+                // Start the asynchronous operation.
+                backgroundWorker_Init.RunWorkerAsync();
+            }
+            progressValue = 10;
             MakeStructure(webBrowser.Document.All);
+            progressValue = 30;
 
             toolStripTextBox_URL.Text = webBrowser.Url.ToString();
+            progressValue = 50;
             //  init = false;
 
             webBrowser.Document.Window.AttachEventHandler("onscroll", OnScrollEventHandler);
+            progressValue = 60;
             docLocation = new Point(webBrowser.Document.GetElementsByTagName("HTML")[0].ScrollLeft, 
                 webBrowser.Document.GetElementsByTagName("HTML")[0].ScrollTop);
+            progressValue = 70;
             FormButtons();
-
-            ////InitTimer();
+            progressValue = 100;
         }
 
         void InitializeContents()
@@ -1380,5 +1397,77 @@ namespace Excellizer.Control
                 plexiglassDictionary_MSHTML[buttonTargetDictionary_MSHTML[newButton]].Visible = false;
             }
         }
+
+        #region waiting progress bar
+
+        int progressValue = 0;
+
+        private void backgroundWorker_Init_DoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker worker = sender as BackgroundWorker;
+            int _value = 0;
+            while(_value != 100)
+            {
+                if (worker.CancellationPending == true)
+                {
+                    e.Cancel = true;
+                    break;
+                }
+                else
+                {
+                    if (_value != progressValue)
+                    {
+                        _value = progressValue;
+                        worker.ReportProgress(_value);
+                        System.Threading.Thread.Sleep(500);
+                    }
+                }
+            }
+        }
+
+        // This event handler updates the progress.
+        private void backgroundWorker_Init_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            // Show the progress in main form (GUI)
+            /// labelResult.Text = (e.ProgressPercentage.ToString() + "%");
+            // Pass the progress to AlertForm label and progressbar
+            alert_Init.Message = "In progress, please wait... " + e.ProgressPercentage.ToString() + "%";
+            alert_Init.ProgressValue = e.ProgressPercentage;
+        }
+
+        // This event handler deals with the results of the background operation.
+        private void backgroundWorker_Init_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            /*if (e.Cancelled == true)
+            {
+                labelResult.Text = "Canceled!";
+            }
+            else if (e.Error != null)
+            {
+                labelResult.Text = "Error: " + e.Error.Message;
+            }
+            else
+            {
+                labelResult.Text = "Done!";
+            }
+            *///
+            // Close the AlertForm
+            alert_Init.Close();
+        }
+
+        public event EventHandler<EventArgs> Canceled;
+
+        private void alertInitCancelButton_Click(object sender, EventArgs e)
+        {
+            // Create a copy of the event to work with
+            EventHandler<EventArgs> ea = Canceled;
+            /* If there are no subscribers, eh will be null so we need to check
+             * to avoid a NullReferenceException. */
+            if (ea != null)
+                ea(this, e);
+        }
+
+        #endregion
+
     }
 }

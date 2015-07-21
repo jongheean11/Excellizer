@@ -45,6 +45,7 @@ namespace Excellizer.Control
             this.toolStripButton_Stop = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.parseButton = new System.Windows.Forms.ToolStripButton();
+            this.backgroundWorker_Init = new System.ComponentModel.BackgroundWorker();
             this.flowLayoutPanel_Bottom.SuspendLayout();
             this.topToolStrip.SuspendLayout();
             this.SuspendLayout();
@@ -206,6 +207,14 @@ namespace Excellizer.Control
             this.parseButton.Text = "Parse";
             this.parseButton.Click += new System.EventHandler(this.parseButton_Click);
             // 
+            // backgroundWorker_Init
+            // 
+            this.backgroundWorker_Init.WorkerReportsProgress = true;
+            this.backgroundWorker_Init.WorkerSupportsCancellation = true;
+            this.backgroundWorker_Init.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker_Init_DoWork);
+            this.backgroundWorker_Init.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.backgroundWorker_Init_ProgressChanged);
+            this.backgroundWorker_Init.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker_Init_RunWorkerCompleted);
+            // 
             // BrowserForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
@@ -262,7 +271,7 @@ namespace Excellizer.Control
         private System.Windows.Forms.Label progressLabel;
         private System.Windows.Forms.ToolStripButton parseButton;
         private Button button1;
-
+        private System.ComponentModel.BackgroundWorker backgroundWorker_Init;
 
 
     }

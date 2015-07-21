@@ -158,6 +158,12 @@
     can be found.
   -->
   <ItemGroup>
+    <Compile Include="Control\AlertForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Control\AlertForm.Designer.cs">
+      <DependentUpon>AlertForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Control\BrowserForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -200,6 +206,9 @@
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
+    <EmbeddedResource Include="Control\AlertForm.resx">
+      <DependentUpon>AlertForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Control\BrowserForm.resx">
       <DependentUpon>BrowserForm.cs</DependentUpon>
     </EmbeddedResource>
