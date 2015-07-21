@@ -15,6 +15,8 @@ namespace Excellizer.Control
         public int _y = 0;
         public int _width = 0;
         public int _height = 0;
+        public int _offsetLeft = 0;
+        public int _offsetTop = 0;
         public Plexiglass(Form tocover)
         {
             this.BackColor = Color.LightBlue;
@@ -69,33 +71,46 @@ namespace Excellizer.Control
         private void Cover_LocationChanged(object sender, EventArgs e)
         {
             // Ensure the plexiglass follows the owner
-            Point parentPtr = this.Owner.PointToScreen(Point.Empty);
-            this.Location = new Point(_x + parentPtr.X, _y + parentPtr.Y);
+            try
+            {
+                Point parentPtr = this.Owner.PointToScreen(Point.Empty);
+                this.Location = new Point(_x + parentPtr.X, _y + parentPtr.Y);
+            }
+            catch(NullReferenceException ex)
+            {
+
+            }
             //this.Location = this.Owner.PointToScreen(Point.Empty);
         }
         private void Cover_ClientSizeChanged(object sender, EventArgs e)
         {
             // Ensure the plexiglass keeps the owner covered
-            int ownerWidth = this.Owner.ClientSize.Width,
-                ownerHeight = this.Owner.ClientSize.Height;
-            
-            if((_x + _width) > ownerWidth)
+            try
             {
-                this.ClientSize = new Size(ownerWidth - _x, this.ClientSize.Height);
-            }
-            else
-            {
-                this.ClientSize = new Size(_width, this.ClientSize.Height);
-            }
-            if((_y + _height + 33) > ownerHeight)
-            {
-                this.ClientSize = new Size(this.ClientSize.Width, ownerHeight - (_y + 33));
-            }
-            else
-            {
-                this.ClientSize = new Size(this.ClientSize.Width, _height);
-            }
+                int ownerWidth = this.Owner.ClientSize.Width,
+                    ownerHeight = this.Owner.ClientSize.Height;
 
+                if ((_x + _width) > ownerWidth)
+                {
+                    this.ClientSize = new Size(ownerWidth - _x, this.ClientSize.Height);
+                }
+                else
+                {
+                    this.ClientSize = new Size(_width, this.ClientSize.Height);
+                }
+                if ((_y + _height + 33) > ownerHeight)
+                {
+                    this.ClientSize = new Size(this.ClientSize.Width, ownerHeight - (_y + 33));
+                }
+                else
+                {
+                    this.ClientSize = new Size(this.ClientSize.Width, _height);
+                }
+            }
+            catch(NullReferenceException ex)
+            {
+
+            }
 
             //this.ClientSize = this.Owner.ClientSize;
         }

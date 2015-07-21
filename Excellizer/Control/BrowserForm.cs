@@ -146,11 +146,17 @@ namespace Excellizer.Control
         {
             //int width = this.Size.Width - 381;
             //toolStripTextBox_URL.Width = width;
+            if(buttonTargetDictionary.Count + buttonTargetDictionary_MSHTML.Count > 0)
+            {
+                InitializeContents();
+                //InitializeView();
+            }
         }
         
         private void webBrowser_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
         {
             //if (init)
+            toolStripTextBox_URL.Text = webBrowser.Url.ToString();
             if (this.webBrowser.ReadyState == WebBrowserReadyState.Complete)
             {
                 InitializeContents();
@@ -951,27 +957,36 @@ namespace Excellizer.Control
                 }
             }
 
+            foreach (Button btn in buttonTargetDictionary_MSHTML.Keys)
+            {
+                btn.Location = new Point(btn.Location.X + xDiff, btn.Location.Y + yDiff);
+                if ((btn.Location.X >= 0) && (btn.Location.X <= webBrowser.Width - 20)
+                    && (btn.Location.Y >= 33) && (btn.Location.Y <= webBrowser.Height + 13))
+                {
+                    btn.Visible = true;
+                }
+                else
+                {
+                    btn.Visible = false;
+                }
+            }
+
             Point parentPtr = this.PointToScreen(Point.Empty);
             foreach (KeyValuePair<HtmlElement, Plexiglass> kvPair in plexiglassDictionary)
             {
                 Plexiglass plexiglass = kvPair.Value;
                 HtmlElement htmlele = kvPair.Key;
 
-                int squeezeX_Left = docLocation.X + 11 - (plexiglass.Location.X + xDiff),
-                    squeezeX_Right = this.ClientSize.Width - (plexiglass.Location.X + 11 + xDiff),
-                    squeezeY_Top = docLocation.Y + 33 - (plexiglass.Location.Y + yDiff),
-                    squeezeY_Bottom = this.ClientSize.Height - (plexiglass.Location.Y + 33 + yDiff);
-
                 int x = plexiglass.Location.X, y = plexiglass.Location.Y, 
                     width = plexiglass.Width, height = plexiglass.Height;
                 if (xDiff > 0)
                 {
-                    if ((htmlele.OffsetRectangle.Left > docLocation.X) && (htmlele.OffsetRectangle.Left < webBrowser.Width + docLocation.X))
+                    if ((plexiglass._offsetLeft > docLocation.X) && (plexiglass._offsetLeft < webBrowser.Width + docLocation.X))
                     {
-                        x = htmlele.OffsetRectangle.Left - (docLocation.X);
+                        x = plexiglass._offsetLeft - (docLocation.X);
                         plexiglass.Location = new Point(x + parentPtr.X, y);
                         plexiglass.ClientSize = new Size(plexiglass._width, plexiglass.ClientSize.Height);
-                        if (htmlele.OffsetRectangle.Left - docLocation.X > webBrowser.Width)
+                        if (plexiglass._offsetLeft - docLocation.X > webBrowser.Width)
                             plexiglass.Visible = false;
                         else
                         {
@@ -981,7 +996,7 @@ namespace Excellizer.Control
                                 plexiglass.Visible = false;
                         }
                     }
-                    else if (htmlele.OffsetRectangle.Left > webBrowser.Width + docLocation.X)
+                    else if (plexiglass._offsetLeft > webBrowser.Width + docLocation.X)
                     {
                         plexiglass.Visible = false;
                     }
@@ -989,7 +1004,7 @@ namespace Excellizer.Control
                     {
                         x = 0;
                         plexiglass.Location = new Point(x + parentPtr.X, y);
-                        int applyWidth = plexiglass._width - (docLocation.X - htmlele.OffsetRectangle.Left);
+                        int applyWidth = plexiglass._width - (docLocation.X - plexiglass._offsetLeft);
                         plexiglass.ClientSize = new Size(applyWidth, plexiglass.ClientSize.Height); // plexiglass.ClientSize.Height - (docLocation.Y - (plexiglass._y - 33)));
                         if (applyWidth <= 0)
                             plexiglass.Visible = false;
@@ -1004,12 +1019,12 @@ namespace Excellizer.Control
                 }
                 else
                 {
-                    if ((htmlele.OffsetRectangle.Top > docLocation.Y) && (htmlele.OffsetRectangle.Top < webBrowser.Height + docLocation.Y))
+                    if ((plexiglass._offsetTop > docLocation.Y) && (plexiglass._offsetTop < webBrowser.Height + docLocation.Y))
                     {
-                        y = htmlele.OffsetRectangle.Top + 33 - (docLocation.Y);
+                        y = plexiglass._offsetTop + 33 - (docLocation.Y);
                         plexiglass.Location = new Point(x, y + parentPtr.Y);
                         plexiglass.ClientSize = new Size(plexiglass.ClientSize.Width, plexiglass._height);
-                        if (htmlele.OffsetRectangle.Top - docLocation.Y > webBrowser.Height)
+                        if (plexiglass._offsetTop - docLocation.Y > webBrowser.Height)
                             plexiglass.Visible = false;
                         else
                         {
@@ -1019,7 +1034,7 @@ namespace Excellizer.Control
                                 plexiglass.Visible = false;
                         }
                     }
-                    else if (htmlele.OffsetRectangle.Top > webBrowser.Height + docLocation.Y)
+                    else if (plexiglass._offsetTop > webBrowser.Height + docLocation.Y)
                     {
                         plexiglass.Visible = false;
                     }
@@ -1027,13 +1042,100 @@ namespace Excellizer.Control
                     {
                         y = 35;
                         plexiglass.Location = new Point(x, y + parentPtr.Y);
-                        int applyHeight = plexiglass._height - (docLocation.Y - htmlele.OffsetRectangle.Top) + 10;
+                        int applyHeight = plexiglass._height - (docLocation.Y - plexiglass._offsetTop) + 10;
                         plexiglass.ClientSize = new Size(plexiglass.ClientSize.Width, applyHeight); // plexiglass.ClientSize.Height - (docLocation.Y - (plexiglass._y - 33)));
                         if (applyHeight <= 0)
                             plexiglass.Visible = false;
                         else
                         {
                             if (buttonTargetDictionary.FirstOrDefault(kv => kv.Value == htmlele).Key.BackColor == Color.Aqua)
+                                plexiglass.Visible = true;
+                            else
+                                plexiglass.Visible = false;
+                        }
+                    }
+                }
+            }
+            foreach (KeyValuePair<IHTMLElement, Plexiglass> kvPair in plexiglassDictionary_MSHTML)
+            {
+                Plexiglass plexiglass = kvPair.Value;
+                IHTMLElement htmlele_MSHTML = kvPair.Key;
+
+                int x = plexiglass.Location.X, y = plexiglass.Location.Y,
+                    width = plexiglass.Width, height = plexiglass.Height;
+                if (xDiff > 0)
+                {
+                    if ((plexiglass._offsetLeft > docLocation.X) && (plexiglass._offsetLeft < webBrowser.Width + docLocation.X))
+                    {
+                        x = plexiglass._offsetLeft - (docLocation.X);
+                        plexiglass.Location = new Point(x + parentPtr.X, y);
+                        plexiglass.ClientSize = new Size(plexiglass._width, plexiglass.ClientSize.Height);
+                        if (plexiglass._offsetLeft - docLocation.X > webBrowser.Width)
+                            plexiglass.Visible = false;
+                        else
+                        {
+                            if (buttonTargetDictionary_MSHTML.FirstOrDefault(kv => kv.Value == htmlele_MSHTML).Key.BackColor == Color.Aqua)
+                                plexiglass.Visible = true;
+                            else
+                                plexiglass.Visible = false;
+                        }
+                    }
+                    else if (plexiglass._offsetLeft > webBrowser.Width + docLocation.X)
+                    {
+                        plexiglass.Visible = false;
+                    }
+                    else
+                    {
+                        x = 0;
+                        plexiglass.Location = new Point(x + parentPtr.X, y);
+                        int applyWidth = plexiglass._width - (docLocation.X - plexiglass._offsetLeft);
+                        plexiglass.ClientSize = new Size(applyWidth, plexiglass.ClientSize.Height); // plexiglass.ClientSize.Height - (docLocation.Y - (plexiglass._y - 33)));
+                        if (applyWidth <= 0)
+                            plexiglass.Visible = false;
+                        else
+                        {
+                            if (buttonTargetDictionary_MSHTML.FirstOrDefault(kv => kv.Value == htmlele_MSHTML).Key.BackColor == Color.Aqua)
+                                plexiglass.Visible = true;
+                            else
+                                plexiglass.Visible = false;
+                        }
+                    }
+                }
+                else
+                {
+                    if ((plexiglass._offsetTop > docLocation.Y) && (plexiglass._offsetTop < webBrowser.Height + docLocation.Y))
+                    {
+                        if ((plexiglass.BackColor == Color.LightSkyBlue) && plexiglass.Visible)
+                            y = 0;
+                        //y = plexiglass.Location.Y - parentPtr.Y + yDiff;
+                        y = plexiglass._offsetTop + 33 - docLocation.Y;
+                        plexiglass.Location = new Point(x, y + parentPtr.Y);
+                        plexiglass.ClientSize = new Size(plexiglass.ClientSize.Width, plexiglass._height);
+                        if (plexiglass._offsetTop - docLocation.Y > webBrowser.Height)
+                            plexiglass.Visible = false;
+                        else
+                        {
+                            if (buttonTargetDictionary_MSHTML.FirstOrDefault(kv => kv.Value == htmlele_MSHTML).Key.BackColor == Color.Aqua)
+                                plexiglass.Visible = true;
+                            else
+                                plexiglass.Visible = false;
+                        }
+                    }
+                    else if (plexiglass._offsetTop > webBrowser.Height + docLocation.Y)
+                    {
+                        plexiglass.Visible = false;
+                    }
+                    else
+                    {
+                        y = 33;
+                        plexiglass.Location = new Point(x, y + parentPtr.Y);
+                        int applyHeight = plexiglass._height - (docLocation.Y - plexiglass._offsetTop);
+                        plexiglass.ClientSize = new Size(plexiglass.ClientSize.Width, applyHeight); // plexiglass.ClientSize.Height - (docLocation.Y - (plexiglass._y - 33)));
+                        if (applyHeight <= 0)
+                            plexiglass.Visible = false;
+                        else
+                        {
+                            if (buttonTargetDictionary_MSHTML.FirstOrDefault(kv => kv.Value == htmlele_MSHTML).Key.BackColor == Color.Aqua)
                                 plexiglass.Visible = true;
                             else
                                 plexiglass.Visible = false;
@@ -1111,29 +1213,15 @@ namespace Excellizer.Control
             }
 
             x = xoff; y = yoff;
-
-            // Get the scrollbar offsets
-            ////int scrollBarYPosition = docLocation.X;
-            ////int scrollBarXPosition = docLocation.Y;
-
-            // Calculate the visible page space
-            ////Rectangle visibleWindow = new Rectangle(scrollBarXPosition, scrollBarYPosition, webBrowser.Width, webBrowser.Height);
-
-            // Calculate the visible area of the element
-            ////Rectangle elementWindow = new Rectangle(xoff, yoff, htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
         }
 
         private void CreateButton(HtmlElement htmlele)
         {
-            int _x, _y;
-            SetElementXY(htmlele, out _x, out _y);
-            int x = _x < 20 ? 0 : _x - 20,
-                y = _y < 20 ? 0 : _y - 20;
-            //int x = htmlele.OffsetRectangle.Left < 20 ? 0 : htmlele.OffsetRectangle.Left - 20,
-                //y = htmlele.OffsetRectangle.Top < 20 ? 0 : htmlele.OffsetRectangle.Top - 20;
+            int x, y;
+            SetElementXY(htmlele, out x, out y);
             
             Button newButton = new Button();
-            Point point = new Point(x,y);
+            Point point = new Point(x < 20 ? 0 - docLocation.X : x - 20 - docLocation.X, y < 20 ? 0 - docLocation.Y : y - 20 - docLocation.Y);
             newButton.Location = point;
             newButton.Width = 15;
             newButton.Height = 15;
@@ -1157,25 +1245,29 @@ namespace Excellizer.Control
 
             buttonTargetDictionary.Add(newButton, htmlele);
 
-            Plexiglass plexiglass = new Plexiglass(this, _x - docLocation.X, _y + 33 - docLocation.Y, htmlele.OffsetRectangle.Width, htmlele.OffsetRectangle.Height);
+            Plexiglass plexiglass = new Plexiglass(this, x - docLocation.X, y + 33 - docLocation.Y, htmlele.OffsetRectangle.Width, htmlele.OffsetRectangle.Height);
             plexiglass.Visible = false;
+            plexiglass._offsetLeft = x;
+            plexiglass._offsetTop = y;
             plexiglassDictionary.Add(htmlele, plexiglass);
         }
 
         private void CreateButton_MSHTML(IHTMLElement htmlele_MSHTML, IHTMLElement htmleleParent)
         {
-            int x = htmleleParent.offsetLeft + htmlele_MSHTML.offsetLeft < 20 ? 0 : htmleleParent.offsetLeft + htmlele_MSHTML.offsetLeft - 20,
-                y = htmleleParent.offsetTop + htmlele_MSHTML.offsetTop < 20 ? 0 : htmleleParent.offsetTop + htmlele_MSHTML.offsetTop - 20;
+            int x, y;
+            SetElementXY_MSHTML(htmlele_MSHTML, out x, out y);
+            int parentX, parentY;
+            SetElementXY_MSHTML(htmleleParent, out parentX, out parentY);
 
             Button newButton = new Button();
-            Point point = new Point(x, y);
+            Point point = new Point(x + parentX < 20 ? 0 - docLocation.X : x + parentX - 20 - docLocation.X, y + parentY < 20 ? 0 - docLocation.Y : y + parentY - 20 - docLocation.Y);
             newButton.Location = point;
             newButton.Width = 15;
             newButton.Height = 15;
             newButton.Text = "V";
             newButton.BackColor = Color.LightGray;
 
-            if ((docLocation.Y <= y) && (y + 20 <= webBrowser.Height))
+            if ((docLocation.Y <= y + parentY) && (y + parentY + 20 <= webBrowser.Height))
             {
                 newButton.Visible = true;
             }
@@ -1193,10 +1285,11 @@ namespace Excellizer.Control
             buttonTargetDictionary_MSHTML.Add(newButton, htmlele_MSHTML);
 
             Plexiglass plexiglass = new Plexiglass(this,
-                htmleleParent.offsetLeft + htmlele_MSHTML.offsetLeft - docLocation.X,
-                htmleleParent.offsetTop + htmlele_MSHTML.offsetTop + 33 - docLocation.Y, 
+                x + parentX - docLocation.X, y + parentY + 33 - docLocation.Y, 
                 htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
             plexiglass.Visible = false;
+            plexiglass._offsetLeft = x + parentX;
+            plexiglass._offsetTop = y + parentY;
             plexiglassDictionary_MSHTML.Add(htmlele_MSHTML, plexiglass);
         }
 
