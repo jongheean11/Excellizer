@@ -42,6 +42,7 @@ namespace Excellizer.Control
 
         public Plexiglass(Form tocover, int x, int y, int width, int height)
         {
+            this.Visible = false;
             this.BackColor = Color.LightSkyBlue;
             this.Opacity = 0.30;      // Tweak as desired
             this.FormBorderStyle = FormBorderStyle.None;

@@ -261,6 +261,9 @@
     <Content Include="Images\ChromeIcon.png" />
     <Content Include="Images\FirefoxIcon.png" />
     <Content Include="Images\IEIcon.png" />
+    <Content Include="Resources\close.bmp" />
+    <Content Include="Resources\home.bmp" />
+    <Content Include="Resources\view_refresh.bmp" />
     <None Include="Resources\IEImage.bmp" />
     <None Include="Resources\FirefoxImage.bmp" />
     <None Include="Resources\ChromeIcon.ico" />

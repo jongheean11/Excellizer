@@ -82,10 +82,14 @@ namespace Excellizer.Control
             plexiglassDictionary  = new Dictionary<HtmlElement, Plexiglass>();
             plexiglassDictionary_MSHTML = new Dictionary<IHTMLElement, Plexiglass>();
             detectedTable = new List<List<HtmlElement>>();
+
+            this.SizeChanged += BrowserForm_SizeChanged;
+            this.MinimumSize = new Size(600, 600);
         }
 
         private void BrowserForm_Load(object sender, EventArgs e)
         {
+            prevSize = this.Size;
             var appName = Process.GetCurrentProcess().ProcessName + ".exe";
             SetIE11KeyforWebBrowserControl(appName);
         }
@@ -144,15 +148,20 @@ namespace Excellizer.Control
             }
         }
 
+        private Size prevSize;
+
         void BrowserForm_SizeChanged(object sender, System.EventArgs e)
         {
-            //int width = this.Size.Width - 381;
-            //toolStripTextBox_URL.Width = width;
-            if(buttonTargetDictionary.Count + buttonTargetDictionary_MSHTML.Count > 0)
+            toolStripTextBox_URL.Width = this.Size.Width - 441;
+
+            if(prevSize.Width - this.Size.Width != 0)
             {
-                InitializeContents();
-                //InitializeView();
+                if (buttonTargetDictionary.Count + buttonTargetDictionary_MSHTML.Count > 0)
+                {
+                    InitializeContents();
+                }
             }
+            prevSize = this.Size;
         }
         
         private void webBrowser_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
@@ -515,19 +524,55 @@ namespace Excellizer.Control
 
         private void parseButton_Click(object sender, EventArgs e)
         {
-            foreach (HtmlElement htmlele in elementListDictionary.Keys)
+            foreach (KeyValuePair<Button, HtmlElement> kvPair in buttonTargetDictionary)
             {
-                List<HtmlElement> htmleleList = elementListDictionary[htmlele];
-                int level = elementLevelDictionary[htmlele];
+                Button btn = kvPair.Key;
+                HtmlElement htmlele = kvPair.Value;
 
-                bool found = true;
-                int childCount = -1;
-                
-                if (htmlele.TagName.Equals("TABLE"))
+                if (btn.BackColor == Color.LightSkyBlue)
                 {
-                    foreach (HtmlElement _htmlele in htmlele.Children)
+                    List<HtmlElement> htmleleList = elementListDictionary[htmlele];
+                    int level = elementLevelDictionary[htmlele];
+
+                    bool found = true;
+                    int childCount = -1;
+
+                    if (htmlele.TagName.Equals("TABLE"))
                     {
-                        if (!(_htmlele.TagName.Equals("COLGROUP") || _htmlele.TagName.Equals("ROWGROUP")))
+                        foreach (HtmlElement _htmlele in htmlele.Children)
+                        {
+                            if (!(_htmlele.TagName.Equals("COLGROUP") || _htmlele.TagName.Equals("ROWGROUP")))
+                            {
+                                if (_htmlele.Style != null)
+                                {
+                                    String style = _htmlele.Style.Replace(" ", String.Empty);
+                                    if (style.Contains("DISPLAY"))
+                                    {
+                                        int displayPos = style.IndexOf("DISPLAY:") + 8;
+                                        //widthPos = style.IndexOf("WIDTH:") + 6,
+                                        //heightPos = style.IndexOf("HEIGHT:") + 7;
+
+                                        if (!style.Substring(displayPos, 4).Equals("none"))
+                                        {
+                                            FormCells(_htmlele);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        FormCells(_htmlele);
+                                    }
+                                }
+                                else
+                                {
+                                    FormCells(_htmlele);
+                                }
+                            }
+                        }
+                    }
+                    else if (htmlele.TagName.Equals("UL") || htmlele.TagName.Equals("DL"))
+                    {
+                        foreach (HtmlElement _htmlele in htmlele.Children)
+                        {
                             if (_htmlele.Style != null)
                             {
                                 String style = _htmlele.Style.Replace(" ", String.Empty);
@@ -551,22 +596,108 @@ namespace Excellizer.Control
                             {
                                 FormCells(_htmlele);
                             }
+                        }
+                    }
+                    /*
+                    else
+                    {
+                        foreach (HtmlElement _htmlele in htmleleList)
+                        {
+                            if (elementLevelDictionary.ContainsKey(_htmlele))
+                            {
+                                if (childCount == -1)
+                                    childCount = elementListDictionary[_htmlele].Count;
+                                else
+                                {
+                                    if (childCount != elementListDictionary[_htmlele].Count)
+                                    {
+                                        found = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                found = false;
+                                break;
+                            }
+                        }
+                    }
+                    */
+                    if (!found)
+                    {
+                        foreach (HtmlElement _htmlele in htmleleList)
+                        {
+                            FormCells(_htmlele);
+                        }
                     }
                 }
-                else if (htmlele.TagName.Equals("UL") || htmlele.TagName.Equals("DL"))
-                {
-                    foreach (HtmlElement _htmlele in htmlele.Children)
-                    {
-                        if (_htmlele.Style != null)
-                        {
-                            String style = _htmlele.Style.Replace(" ", String.Empty);
-                            if (style.Contains("DISPLAY"))
-                            {
-                                int displayPos = style.IndexOf("DISPLAY:") + 8;
-                                //widthPos = style.IndexOf("WIDTH:") + 6,
-                                //heightPos = style.IndexOf("HEIGHT:") + 7;
+            }
 
-                                if (!style.Substring(displayPos, 4).Equals("none"))
+            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML)
+            {
+                Button btn = kvPair.Key;
+                IHTMLElement htmlele = kvPair.Value;
+
+                if (btn.BackColor == Color.LightSkyBlue)
+                {
+                    //List<IHTMLElement> htmleleList = elementDicDictionary_MSHTML[htmlele];
+                    int level = elementLevelDictionary_MSHTML[htmlele];
+
+                    bool found = true;
+                    int childCount = -1;
+
+                    if (htmlele.tagName.Equals("TABLE"))
+                    {
+                        foreach (HtmlElement _htmlele in htmlele.children)
+                        {
+                            if (!(_htmlele.TagName.Equals("COLGROUP") || _htmlele.TagName.Equals("ROWGROUP")))
+                            {
+                                if (_htmlele.Style != null)
+                                {
+                                    String style = _htmlele.Style.Replace(" ", String.Empty);
+                                    if (style.Contains("DISPLAY"))
+                                    {
+                                        int displayPos = style.IndexOf("DISPLAY:") + 8;
+                                        //widthPos = style.IndexOf("WIDTH:") + 6,
+                                        //heightPos = style.IndexOf("HEIGHT:") + 7;
+
+                                        if (!style.Substring(displayPos, 4).Equals("none"))
+                                        {
+                                            FormCells(_htmlele);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        FormCells(_htmlele);
+                                    }
+                                }
+                                else
+                                {
+                                    FormCells(_htmlele);
+                                }
+                            }
+                        }
+                    }
+                    else if (htmlele.tagName.Equals("UL") || htmlele.tagName.Equals("DL"))
+                    {
+                        foreach (HtmlElement _htmlele in htmlele.children)
+                        {
+                            if (_htmlele.Style != null)
+                            {
+                                String style = _htmlele.Style.Replace(" ", String.Empty);
+                                if (style.Contains("DISPLAY"))
+                                {
+                                    int displayPos = style.IndexOf("DISPLAY:") + 8;
+                                    //widthPos = style.IndexOf("WIDTH:") + 6,
+                                    //heightPos = style.IndexOf("HEIGHT:") + 7;
+
+                                    if (!style.Substring(displayPos, 4).Equals("none"))
+                                    {
+                                        FormCells(_htmlele);
+                                    }
+                                }
+                                else
                                 {
                                     FormCells(_htmlele);
                                 }
@@ -576,49 +707,44 @@ namespace Excellizer.Control
                                 FormCells(_htmlele);
                             }
                         }
-                        else
-                        {
-                            FormCells(_htmlele);
-                        }
                     }
-                }
-                /*
-                else
-                {
-                    foreach (HtmlElement _htmlele in htmleleList)
+                    /*
+                    else
                     {
-                        if (elementLevelDictionary.ContainsKey(_htmlele))
+                        foreach (HtmlElement _htmlele in htmleleList)
                         {
-                            if (childCount == -1)
-                                childCount = elementListDictionary[_htmlele].Count;
-                            else
+                            if (elementLevelDictionary.ContainsKey(_htmlele))
                             {
-                                if (childCount != elementListDictionary[_htmlele].Count)
+                                if (childCount == -1)
+                                    childCount = elementListDictionary[_htmlele].Count;
+                                else
                                 {
-                                    found = false;
-                                    break;
+                                    if (childCount != elementListDictionary[_htmlele].Count)
+                                    {
+                                        found = false;
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        else
-                        {
-                            found = false;
-                            break;
+                            else
+                            {
+                                found = false;
+                                break;
+                            }
                         }
                     }
-                }
-                */
-                if (!found)
-                {
-                    foreach (HtmlElement _htmlele in htmleleList)
+                    */
+                    if (!found)
                     {
-                        FormCells(_htmlele);
+                        //foreach (HtmlElement _htmlele in htmleleList)
+                        //{
+                            //FormCells(_htmlele);
+                        //}
                     }
                 }
             }
 
             ////InsertDatas();
-            return;
         }
 
         int maxColumnCount_Table, maxRowCount_Table;
@@ -665,6 +791,8 @@ namespace Excellizer.Control
             int idxRow = 1, idxCol = 1, selectedX = activeCell.Row - 1, selectedY = activeCell.Column - 1;
             int rowspan = 1, colspan = 1, rowspan_check = 0, colspan_check = 0;
 
+            StyleGenerator sg = new StyleGenerator();
+
             Dictionary<int, Dictionary<int, int>> checkMatrix = new Dictionary<int, Dictionary<int, int>>();
             for (int i = 0; i < maxRowCount_Table; i++)
             {
@@ -703,42 +831,44 @@ namespace Excellizer.Control
                     if (_skip)
                         break;
 
-                    if ((htmlele.GetAttribute("rowspan") != null) && (htmlele.GetAttribute("colspan") != null))
+                    sg.ParseStyleString(htmlele.Style == null ? "" : htmlele.Style);
+
+                    if ((!sg.GetStyle("rowspan").Equals("")) && (!sg.GetStyle("colspan").Equals("")))
                     {
-                        if ((!htmlele.GetAttribute("rowspan").Equals("1")) && (!htmlele.GetAttribute("colspan").Equals("1")))
+                        if ((!sg.GetStyle("rowspan").Equals("1")) && (!sg.GetStyle("colspan").Equals("1")))
                         {
-                            rowspan = int.Parse(htmlele.GetAttribute("rowspan"));
-                            colspan = int.Parse(htmlele.GetAttribute("colspan"));
+                            rowspan = int.Parse(sg.GetStyle("rowspan"));
+                            colspan = int.Parse(sg.GetStyle("colspan"));
                             activeSheet.Range[activeSheet.Cells[idxRow + selectedX, idxCol + selectedY], 
                                 activeSheet.Cells[idxRow + rowspan - 1 + selectedX, idxCol + colspan - 1 + selectedY]].Merge();
                         }
-                        else if (!htmlele.GetAttribute("rowspan").Equals("1"))
+                        else if (!sg.GetStyle("rowspan").Equals("1"))
                         {
-                            rowspan = int.Parse(htmlele.GetAttribute("rowspan"));
+                            rowspan = int.Parse(sg.GetStyle("rowspan"));
                             activeSheet.Range[activeSheet.Cells[idxRow + selectedX, idxCol + selectedY], 
                                 activeSheet.Cells[idxRow + rowspan - 1 + selectedX, idxCol + selectedY]].Merge();
                         }
-                        else if (!htmlele.GetAttribute("colspan").Equals("1"))
+                        else if (!sg.GetStyle("colspan").Equals("1"))
                         {
-                            colspan = int.Parse(htmlele.GetAttribute("colspan"));
+                            colspan = int.Parse(sg.GetStyle("colspan"));
                             activeSheet.Range[activeSheet.Cells[idxRow + selectedX, idxCol + selectedY], 
                                 activeSheet.Cells[idxRow + selectedX, idxCol + colspan - 1 + selectedY]].Merge();
                         }
                     }
-                    else if (htmlele.GetAttribute("rowspan") != null)
+                    else if (!sg.GetStyle("rowspan").Equals(""))
                     {
-                        if (!htmlele.GetAttribute("rowspan").Equals("1"))
+                        if (!sg.GetStyle("rowspan").Equals("1"))
                         {
-                            rowspan = int.Parse(htmlele.GetAttribute("rowspan"));
+                            rowspan = int.Parse(sg.GetStyle("rowspan"));
                             activeSheet.Range[activeSheet.Cells[idxRow + selectedX, idxCol + selectedY], 
                                 activeSheet.Cells[idxRow + rowspan - 1 + selectedX, idxCol + selectedY]].Merge();
                         }
                     }
-                    else if (htmlele.GetAttribute("colspan") != null)
+                    else if (!sg.GetStyle("colspan").Equals(""))
                     {
-                        if (!htmlele.GetAttribute("colspan").Equals("1"))
+                        if (!sg.GetStyle("colspan").Equals("1"))
                         {
-                            colspan = int.Parse(htmlele.GetAttribute("colspan"));
+                            colspan = int.Parse(sg.GetStyle("colspan"));
                             activeSheet.Range[activeSheet.Cells[idxRow + selectedX, idxCol + selectedY],
                                 activeSheet.Cells[idxRow + selectedX, idxCol + colspan - 1 + selectedY]].Merge();
                             //factorList.Add(new TableSeperatingFactor(idxRow, idxCol, 0, colspan));
@@ -773,16 +903,9 @@ namespace Excellizer.Control
             return maxCol;
         }
 
-        
-
-        private void cancelButton_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
-
         #endregion
 
-        #region topToolTip
+        #region 상단 툴팁 컨트롤 이벤트 함수
 
         private void toolStripButton_Move_Click(object sender, System.EventArgs e)
         {
@@ -822,6 +945,13 @@ namespace Excellizer.Control
             }
         }
 
+        private void toolStripButton_Detect_Click(object sender, EventArgs e)
+        {
+            if (buttonTargetDictionary.Count + buttonTargetDictionary.Count > 0)
+                InitializeContents();
+            InitializeView();
+        }
+
         private void toolStripButton_Back_Click(object sender, EventArgs e)
         {
             webBrowser.GoBack();
@@ -847,109 +977,6 @@ namespace Excellizer.Control
             webBrowser.Stop();
         }
         #endregion
-
-        #region etc(not using)
-
-        [DllImport("wininet.dll", SetLastError = true)]
-        public static extern bool InternetGetCookieEx(
-            string url,
-            string cookieName,
-            StringBuilder cookieData,
-            ref int size,
-            Int32 dwFlags,
-            IntPtr lpReserved);
-
-        private const Int32 InternetCookieHttponly = 0x2000;
-
-        /// <summary>
-        /// Gets the URI cookie container.
-        /// </summary>
-        /// <param name="uri">The URI.</param>
-        /// <returns></returns>
-        public static CookieContainer GetUriCookieContainer(Uri uri)
-        {
-            CookieContainer cookies = null;
-            // Determine the size of the cookie
-            int datasize = 8192 * 16;
-            StringBuilder cookieData = new StringBuilder(datasize);
-            if (!InternetGetCookieEx(uri.ToString(), null, cookieData, ref datasize, InternetCookieHttponly, IntPtr.Zero))
-            {
-                if (datasize < 0)
-                    return null;
-                // Allocate stringbuilder large enough to hold the cookie
-                cookieData = new StringBuilder(datasize);
-                if (!InternetGetCookieEx(uri.ToString(), null, cookieData, ref datasize, InternetCookieHttponly, IntPtr.Zero))
-                    return null;
-            }
-            if (cookieData.Length > 0)
-            {
-                cookies = new CookieContainer();
-                cookies.SetCookies(uri, cookieData.ToString().Replace(';', ','));
-            }
-            return cookies;
-        }
-
-        [DllImport("wininet.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        static extern bool InternetSetCookie(string lpszUrlName, string lpszCookieName, string lpszCookieData);
-
-        [DllImport("wininet.dll", SetLastError = true)]
-        public static extern bool InternetGetCookie(string lpszUrl, string lpszCookieName, ref StringBuilder lpszCookieData, ref int lpdwSize);
-
-
-        #endregion
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            //foreach (HtmlElement htmlele in elementListDictionary.Keys)
-            /*foreach (HtmlElement htmlele in webBrowser.Document.All)
-            {
-                //int width = htmlele.ClientRectangle.Width;
-                //int height = htmlele.ClientRectangle.Height;
-                int width = htmlele.OffsetRectangle.Width;
-                int height = htmlele.OffsetRectangle.Height;
-                if ((width != 0) || (height != 0))
-                {
-                    continue;
-                }
-            }*/
-
-            InitializeView();
-            /*
-            StyleGenerator sg = new StyleGenerator();
-
-            foreach (HtmlElement htmlele in webBrowser.Document.All)
-            {
-                if (htmlele.TagName.Equals("TABLE"))
-                {
-                    Plexiglass plexiglass = new Plexiglass(this, htmlele.OffsetRectangle.X + 10 - docLocation.X, htmlele.OffsetRectangle.Y + 48 - docLocation.Y, htmlele.OffsetRectangle.Width, htmlele.OffsetRectangle.Height);
-                    
-                    plexiglass.Visible = false;
-
-                    plexiglassDictionary.Add(htmlele, plexiglass);
-                }
-            }
-
-            foreach (KeyValuePair<IHTMLElement, Dictionary<IHTMLElement, List<IHTMLElement>>> kvPair in elementDicDictionary_MSHTML)
-            {
-                IHTMLElement htmleleParent = kvPair.Key;
-                Dictionary<IHTMLElement, List<IHTMLElement>> elementListDictionary_MSHTML = kvPair.Value;
-                foreach(IHTMLElement htmlele_MSHTML in elementListDictionary_MSHTML.Keys)
-                {
-                    if (htmlele_MSHTML.tagName.Equals("TABLE"))
-                    {
-                        Plexiglass plexiglass = new Plexiglass(this, 
-                            htmleleParent.offsetLeft + 10 - docLocation.X + htmlele_MSHTML.offsetLeft,
-                            htmleleParent.offsetTop + 48 - docLocation.Y + htmlele_MSHTML.offsetTop, 
-                            htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
-
-                        plexiglass.Visible = false;
-
-                        plexiglassDictionary_MSHTML.Add(htmlele_MSHTML, plexiglass);
-                    }
-                }
-            }
-             * */
-        }
 
         public void OnScrollEventHandler(object sender, EventArgs e)
         {
@@ -1164,6 +1191,8 @@ namespace Excellizer.Control
             this.ResumeLayout();
         }
 
+        #region 영역 및 선택 버튼 생성 함수
+
         private void FormButtons()
         {
             foreach (HtmlElement htmlele in elementListDictionary.Keys)
@@ -1263,7 +1292,6 @@ namespace Excellizer.Control
             buttonTargetDictionary.Add(newButton, htmlele);
 
             Plexiglass plexiglass = new Plexiglass(this, x - docLocation.X, y + 33 - docLocation.Y, htmlele.OffsetRectangle.Width, htmlele.OffsetRectangle.Height);
-            plexiglass.Visible = false;
             plexiglass._offsetLeft = x;
             plexiglass._offsetTop = y;
             plexiglassDictionary.Add(htmlele, plexiglass);
@@ -1304,11 +1332,14 @@ namespace Excellizer.Control
             Plexiglass plexiglass = new Plexiglass(this,
                 x + parentX - docLocation.X, y + parentY + 33 - docLocation.Y, 
                 htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
-            plexiglass.Visible = false;
             plexiglass._offsetLeft = x + parentX;
             plexiglass._offsetTop = y + parentY;
             plexiglassDictionary_MSHTML.Add(htmlele_MSHTML, plexiglass);
         }
+
+        #endregion
+
+        #region 영역 선택 버튼 이벤트 함수
 
         void newButton_MouseLeave(object sender, EventArgs e)
         {
@@ -1398,6 +1429,8 @@ namespace Excellizer.Control
             }
         }
 
+#endregion
+
         #region waiting progress bar
 
         int progressValue = 0;
@@ -1465,6 +1498,108 @@ namespace Excellizer.Control
              * to avoid a NullReferenceException. */
             if (ea != null)
                 ea(this, e);
+        }
+
+        #endregion
+
+        #region etc(not using)
+
+        [DllImport("wininet.dll", SetLastError = true)]
+        public static extern bool InternetGetCookieEx(
+            string url,
+            string cookieName,
+            StringBuilder cookieData,
+            ref int size,
+            Int32 dwFlags,
+            IntPtr lpReserved);
+
+        private const Int32 InternetCookieHttponly = 0x2000;
+
+        /// <summary>
+        /// Gets the URI cookie container.
+        /// </summary>
+        /// <param name="uri">The URI.</param>
+        /// <returns></returns>
+        public static CookieContainer GetUriCookieContainer(Uri uri)
+        {
+            CookieContainer cookies = null;
+            // Determine the size of the cookie
+            int datasize = 8192 * 16;
+            StringBuilder cookieData = new StringBuilder(datasize);
+            if (!InternetGetCookieEx(uri.ToString(), null, cookieData, ref datasize, InternetCookieHttponly, IntPtr.Zero))
+            {
+                if (datasize < 0)
+                    return null;
+                // Allocate stringbuilder large enough to hold the cookie
+                cookieData = new StringBuilder(datasize);
+                if (!InternetGetCookieEx(uri.ToString(), null, cookieData, ref datasize, InternetCookieHttponly, IntPtr.Zero))
+                    return null;
+            }
+            if (cookieData.Length > 0)
+            {
+                cookies = new CookieContainer();
+                cookies.SetCookies(uri, cookieData.ToString().Replace(';', ','));
+            }
+            return cookies;
+        }
+
+        [DllImport("wininet.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern bool InternetSetCookie(string lpszUrlName, string lpszCookieName, string lpszCookieData);
+
+        [DllImport("wininet.dll", SetLastError = true)]
+        public static extern bool InternetGetCookie(string lpszUrl, string lpszCookieName, ref StringBuilder lpszCookieData, ref int lpdwSize);
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            //foreach (HtmlElement htmlele in elementListDictionary.Keys)
+            /*foreach (HtmlElement htmlele in webBrowser.Document.All)
+            {
+                //int width = htmlele.ClientRectangle.Width;
+                //int height = htmlele.ClientRectangle.Height;
+                int width = htmlele.OffsetRectangle.Width;
+                int height = htmlele.OffsetRectangle.Height;
+                if ((width != 0) || (height != 0))
+                {
+                    continue;
+                }
+            }*/
+
+            InitializeView();
+            /*
+            StyleGenerator sg = new StyleGenerator();
+
+            foreach (HtmlElement htmlele in webBrowser.Document.All)
+            {
+                if (htmlele.TagName.Equals("TABLE"))
+                {
+                    Plexiglass plexiglass = new Plexiglass(this, htmlele.OffsetRectangle.X + 10 - docLocation.X, htmlele.OffsetRectangle.Y + 48 - docLocation.Y, htmlele.OffsetRectangle.Width, htmlele.OffsetRectangle.Height);
+                    
+                    plexiglass.Visible = false;
+
+                    plexiglassDictionary.Add(htmlele, plexiglass);
+                }
+            }
+
+            foreach (KeyValuePair<IHTMLElement, Dictionary<IHTMLElement, List<IHTMLElement>>> kvPair in elementDicDictionary_MSHTML)
+            {
+                IHTMLElement htmleleParent = kvPair.Key;
+                Dictionary<IHTMLElement, List<IHTMLElement>> elementListDictionary_MSHTML = kvPair.Value;
+                foreach(IHTMLElement htmlele_MSHTML in elementListDictionary_MSHTML.Keys)
+                {
+                    if (htmlele_MSHTML.tagName.Equals("TABLE"))
+                    {
+                        Plexiglass plexiglass = new Plexiglass(this, 
+                            htmleleParent.offsetLeft + 10 - docLocation.X + htmlele_MSHTML.offsetLeft,
+                            htmleleParent.offsetTop + 48 - docLocation.Y + htmlele_MSHTML.offsetTop, 
+                            htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
+
+                        plexiglass.Visible = false;
+
+                        plexiglassDictionary_MSHTML.Add(htmlele_MSHTML, plexiglass);
+                    }
+                }
+            }
+             * */
         }
 
         #endregion

@@ -88,6 +88,7 @@ namespace Excellizer.Control
 
         public void ParseStyleString(string styles)
         {
+            styleDB.Clear();
             if (styles.Length > 0)
             {
                 string[] stylePairs = styles.Split(new char[] { ';' });
