@@ -42,7 +42,6 @@ namespace Excellizer.Control
 
         public Plexiglass(Form tocover, int x, int y, int width, int height)
         {
-            this.Visible = false;
             this.BackColor = Color.LightSkyBlue;
             this.Opacity = 0.30;      // Tweak as desired
             this.FormBorderStyle = FormBorderStyle.None;
@@ -63,7 +62,7 @@ namespace Excellizer.Control
                 int value = 1;
                 DwmSetWindowAttribute(tocover.Handle, DWMWA_TRANSITIONS_FORCEDISABLED, ref value, 4);
             }
-
+            this.Visible = false;
             this._x = x;
             this._y = y;
             this._width = width;
@@ -140,10 +139,17 @@ namespace Excellizer.Control
         {
             const int WM_NCHITTEST = 0x0084;
             const int HTTRANSPARENT = (-1);
+            const int WM_SETFOCUS = 0x0007;
+            const int WM_KILLFOCUS = 0x0008;
 
             if (m.Msg == WM_NCHITTEST)
             {
                 m.Result = (IntPtr)HTTRANSPARENT;
+            }
+            else if (m.Msg == WM_SETFOCUS)
+            {
+                m.Msg = WM_KILLFOCUS;
+                base.WndProc(ref m);
             }
             else
             {

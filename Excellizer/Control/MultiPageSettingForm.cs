@@ -12,16 +12,29 @@ namespace Excellizer.Control
 {
     public partial class MultiPageSettingForm : Form
     {
-        public MultiPageSettingForm()
+        public MultiPageSettingForm(Form owner)
         {
+            this.Owner = owner;
             InitializeComponent();
         }
 
         private void OkButton_Click(object sender, EventArgs e)
         {
-            String url = URLTextBox.Text,
-                startIndex = StartIndexTextBox.Text,
-                endIndex = EndIndexTextBox.Text;
+            if(FrontURLTextBox.Text.Contains("http"))
+            {
+                ((BrowserForm)Owner).frontURL =  FrontURLTextBox.Text;
+                ((BrowserForm)Owner).startIndex = int.Parse(StartIndexTextBox.Text);
+                ((BrowserForm)Owner).endIndex = int.Parse(EndIndexTextBox.Text);
+                ((BrowserForm)Owner).backURL = BackURLTextBox.Text;
+
+                ((BrowserForm)Owner).MultiPageParse();
+
+                this.Close();
+            }
+            else
+            {
+                MessageBox.Show("올바른 URL 폼을 입력하세요.");
+            }
         }
 
         private void CancelButton_Click(object sender, EventArgs e)

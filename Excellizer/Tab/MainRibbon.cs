@@ -122,7 +122,6 @@ namespace Excellizer.Tab
 
         public void CookieSettingButton_OnAction(Microsoft.Office.Core.IRibbonControl control)
         {
-            
             if (cookieSettingForm == null)
             {
                 cookieSettingForm = new CookieSettingForm();
