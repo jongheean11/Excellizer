@@ -23,30 +23,6 @@ namespace Excellizer.Control
     public partial class BrowserForm : Form
     {
         #region Attributes and Special Controls
-        /**
-         * //Page Initializer
-         * Scope Applier
-         * Level Tracker
-         * Submitter
-         * -- 예제 --
-         * HtmlDocument htmlDocument = webBrowser.Document;
-            HtmlElement head = htmlDocument.GetElementsByTagName("head")[0];
-            //HtmlDocument a = _webBrowser.Document.DomDocument as HtmlDocument;
-
-            HtmlElement script = htmlDocument.CreateElement("script");
-            //script.SetAttribute("text", "$(document).ready(function() {"
-            //   + "alert('hello');"
-            //    + "});");
-            //script.SetAttribute("text", "function doHello() { alert('hello'); }");
-            //head.AppendChild(script);
-            //webBrowser.Document.InvokeScript("doHello");
-         */
-        private String string_ScopeApplier = "function ScopeApplier(){"
-            + "$('')."
-            + ""
-            + "}";
-        private String string_LevelTracker;
-        private String string_Submitter;
 
         private Dictionary<HtmlElement, List<HtmlElement>> elementListDictionary;
         //private Dictionary<HtmlElement, int> elementLevelDictionary;
@@ -56,7 +32,6 @@ namespace Excellizer.Control
         private Dictionary<IHTMLElement, int> parentFrameIndexDictionary;
         private Dictionary<IHTMLElement, int> elementLevelDictionary_MSHTML;
 
-        private HtmlDocument prevHtmlDocument;
         private bool init = false;
         private bool afterBody = false;
 
@@ -67,12 +42,15 @@ namespace Excellizer.Control
         private Dictionary<IHTMLElement, Plexiglass> plexiglassDictionary_MSHTML;
         private Dictionary<List<List<HtmlElement>>, Plexiglass> plexiglassDictionary_Level;
 
+        private int regionSelected;
         private Dictionary<Button, HtmlElement> buttonTargetDictionary;
         private Dictionary<Button, IHTMLElement> buttonTargetDictionary_MSHTML;
         private Dictionary<Button, List<List<HtmlElement>>> buttonTargetDictionary_Level;
         private Point docLocation;
 
-        AlertForm alert_Init;
+        private AlertForm alert_Init;
+
+        private MultiPageSettingForm mulForm;
         
         #endregion
 
@@ -178,8 +156,6 @@ namespace Excellizer.Control
                 }
             }
             prevSize = this.Size;
-
-            topToolStrip.Invalidate();
         }
 
         #endregion
@@ -246,21 +222,21 @@ namespace Excellizer.Control
             foreach (Button btn in buttonTargetDictionary.Keys)
             {
                 this.Controls.Remove(plexiglassDictionary[buttonTargetDictionary[btn]]);
-                plexiglassDictionary[buttonTargetDictionary[btn]].Dispose();
+                plexiglassDictionary[buttonTargetDictionary[btn]].Close();
                 this.Controls.Remove(btn);
                 btn.Dispose();
             }
             foreach (Button btn in buttonTargetDictionary_MSHTML.Keys)
             {
                 this.Controls.Remove(plexiglassDictionary_MSHTML[buttonTargetDictionary_MSHTML[btn]]);
-                plexiglassDictionary_MSHTML[buttonTargetDictionary_MSHTML[btn]].Dispose();
+                plexiglassDictionary_MSHTML[buttonTargetDictionary_MSHTML[btn]].Close();
                 this.Controls.Remove(btn);
                 btn.Dispose();
             }
             foreach (Button btn in buttonTargetDictionary_Level.Keys)
             {
                 this.Controls.Remove(plexiglassDictionary_Level[buttonTargetDictionary_Level[btn]]);
-                plexiglassDictionary_Level[buttonTargetDictionary_Level[btn]].Dispose();
+                plexiglassDictionary_Level[buttonTargetDictionary_Level[btn]].Close();
                 this.Controls.Remove(btn);
                 btn.Dispose();
             }
@@ -270,7 +246,7 @@ namespace Excellizer.Control
             plexiglassDictionary.Clear();
             plexiglassDictionary_MSHTML.Clear();
             plexiglassDictionary_Level.Clear();
-            
+            regionSelected = 0;
 
             this.ResumeLayout();
         }
@@ -298,7 +274,7 @@ namespace Excellizer.Control
                     HtmlElement parent = htmlele.Parent;
                     while (!parent.TagName.Equals("BODY"))
                     {
-                        if (parent.TagName.Equals("TABLE"))
+                        if (parent.TagName.Equals("TABLE") || parent.TagName.Equals("UL") || parent.TagName.Equals("OL") || parent.TagName.Equals("DL"))
                         {
                             return;
                         }
@@ -316,8 +292,6 @@ namespace Excellizer.Control
                 {
                     List<HtmlElement> htmleleList = elementLevelDictionary[level];
                     htmleleList.Add(htmlele);
-                    //elementLevelDictionary.Remove(level);
-                    //elementLevelDictionary[level] = htmleleList;
                 }
             }
         }
@@ -677,10 +651,14 @@ namespace Excellizer.Control
 
         private void toolStripButton_Parse_Click(object sender, EventArgs e)
         {
+            if (regionSelected == 0)
+            {
+                MessageBox.Show("파싱할 영역이 없습니다.");
+                return;
+            }
             ParseTargets();
         }
 
-        private MultiPageSettingForm mulForm;
         private void toolStripButton_MultiPage_Click(object sender, EventArgs e)
         {
             if (mulForm == null)
@@ -705,117 +683,109 @@ namespace Excellizer.Control
 
         private void ParseTargets()
         {
-            foreach (KeyValuePair<Button, HtmlElement> kvPair in buttonTargetDictionary)
+            foreach (KeyValuePair<Button, HtmlElement> kvPair in buttonTargetDictionary.Where(kv => kv.Key.BackColor == Color.Aqua))
             {
-                Button btn = kvPair.Key;
                 HtmlElement htmlele = kvPair.Value;
+                List<HtmlElement> htmleleList = elementListDictionary[htmlele];
 
-                if (btn.BackColor == Color.Aqua)
+                if (htmlele.TagName.Equals("TABLE"))
                 {
-                    List<HtmlElement> htmleleList = elementListDictionary[htmlele];
-                    //int level = elementLevelDictionary[htmlele];
-
-                    bool found = true;
-                    int childCount = -1;
-
-                    if (htmlele.TagName.Equals("TABLE"))
+                    foreach (HtmlElement _htmlele in htmlele.Children)
                     {
-                        foreach (HtmlElement _htmlele in htmlele.Children)
+                        if (!(_htmlele.TagName.Equals("COLGROUP") || _htmlele.TagName.Equals("ROWGROUP")))
                         {
-                            if (!(_htmlele.TagName.Equals("COLGROUP") || _htmlele.TagName.Equals("ROWGROUP")))
-                            {
-                                if(IsSeen(_htmlele.Style))
-                                    FormCells(_htmlele);
-                                /*if (_htmlele.Style != null)
-                                {
-                                    String style = _htmlele.Style.Replace(" ", String.Empty);
-                                    if (style.Contains("DISPLAY"))
-                                    {
-                                        int displayPos = style.IndexOf("DISPLAY:") + 8;
-                                        //widthPos = style.IndexOf("WIDTH:") + 6,
-                                        //heightPos = style.IndexOf("HEIGHT:") + 7;
-
-                                        if (!style.Substring(displayPos, 4).Equals("none"))
-                                        {
-                                            FormCells(_htmlele);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        FormCells(_htmlele);
-                                    }
-                                }
-                                else
-                                {
-                                    FormCells(_htmlele);
-                                }*/
-                            }
+                            if(IsSeen(_htmlele.Style))
+                                FormCells(_htmlele);
                         }
                     }
                 }
+                else if (htmlele.TagName.Equals("UL") || htmlele.TagName.Equals("OL"))
+                {
+                    bool ok = true;
+                    int count = 0;
+                    foreach(HtmlElement htmlele_LI in htmlele.Children)
+                    {
+                        if(IsSeen(htmlele_LI.Style))
+                        {
+                            if (htmlele_LI.Children.Count == 1)
+                            {
+                                ok = false;
+                                break;
+                            }
+                            /*
+                            //TODO
+                            foreach(HtmlElement cell in htmlele_LI.Children)
+                            {
+                                cell.ClientRectangle.Left;
+                            }
+                            */
+                            count += htmlele_LI.Children.Count;
+                        }
+                    }
+                    if(ok && (count > 4))
+                        FormCells_ULOL(htmlele);
+                }
+                else if (htmlele.TagName.Equals("DL"))
+                {
+                    FormCells_DL(htmlele);
+                }
             }
 
-            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML)
+            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML.Where(kv => kv.Key.BackColor == Color.Aqua))
             {
-                Button btn = kvPair.Key;
                 IHTMLElement htmlele = kvPair.Value;
+                int level = elementLevelDictionary_MSHTML[htmlele];
 
-                if (btn.BackColor == Color.Aqua)
+                if (htmlele.tagName.Equals("TABLE"))
                 {
-                    //List<IHTMLElement> htmleleList = htmlele.children;
-                    int level = elementLevelDictionary_MSHTML[htmlele];
-
-                    bool found = true;
-                    int childCount = -1;
-
-                    if (htmlele.tagName.Equals("TABLE"))
+                    foreach (IHTMLElement _htmlele in htmlele.children)
                     {
-                        foreach (IHTMLElement _htmlele in htmlele.children)
+                        if (!(_htmlele.tagName.Equals("COLGROUP") || _htmlele.tagName.Equals("ROWGROUP")))
                         {
-                            if (!(_htmlele.tagName.Equals("COLGROUP") || _htmlele.tagName.Equals("ROWGROUP")))
-                            {
-                                if (IsSeen(_htmlele.style.toString()))
-                                    FormCells_MSHTML(_htmlele);
-                                /*if (_htmlele.style != null)
-                                {
-                                    String style = _htmlele.style.toString().Replace(" ", String.Empty);
-                                    if (style.Contains("DISPLAY"))
-                                    {
-                                        int displayPos = style.IndexOf("DISPLAY:") + 8;
-                                        //widthPos = style.IndexOf("WIDTH:") + 6,
-                                        //heightPos = style.IndexOf("HEIGHT:") + 7;
-
-                                        if (!style.Substring(displayPos, 4).Equals("none"))
-                                        {
-                                            FormCells_MSHTML(_htmlele);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        FormCells_MSHTML(_htmlele);
-                                    }
-                                }
-                                else
-                                {
-                                    FormCells_MSHTML(_htmlele);
-                                }*/
-                            }
+                            if (IsSeen(_htmlele.style.toString()))
+                                FormCells_MSHTML(_htmlele);
                         }
                     }
                 }
+                else if (htmlele.tagName.Equals("UL") || htmlele.tagName.Equals("OL"))
+                {
+                    bool ok = true;
+                    int count = 0;
+                    foreach (IHTMLElement htmlele_LI in htmlele.children)
+                    {
+                        if (IsSeen(htmlele_LI.style.toString()))
+                        {
+                            if (htmlele_LI.children.Count == 1)
+                            {
+                                ok = false;
+                                break;
+                            }
+                            /*
+                            //TODO
+                            foreach(HtmlElement cell in htmlele_LI.Children)
+                            {
+                                cell.ClientRectangle.Left;
+                            }
+                            */
+                            count += htmlele_LI.children.Count;
+                        }
+                    }
+                    if (ok && (count > 4))
+                        FormCells_ULOL_MSHTML(htmlele);
+                }
+                else if (htmlele.tagName.Equals("DL"))
+                {
+                    FormCells_DL_MSHTML(htmlele);
+                }
             }
 
-            foreach(KeyValuePair<Button, List<List<HtmlElement>>> kvPair in buttonTargetDictionary_Level)
+            foreach(KeyValuePair<Button, List<List<HtmlElement>>> kvPair in buttonTargetDictionary_Level.Where(kv => kv.Key.BackColor == Color.Aqua))
             {
-                if (kvPair.Key.BackColor == Color.Aqua)
-                {
-                    FormCells_Level(kvPair.Value);
-                }
+                FormCells_Level(kvPair.Value);
             }
         }
 
-        int maxColumnCount_Table, maxRowCount_Table,
-            selectedX = 0, selectedY = 0;
+        int maxColumnCount_Table, maxRowCount_Table, selectedX = 0, selectedY = 0;
 
         private void FormCells(HtmlElement _htmlele, bool singlePage = true)
         {
@@ -846,6 +816,38 @@ namespace Excellizer.Control
             detectedTable.Clear();
         }
 
+        private void FormCells_ULOL(HtmlElement _htmlele, bool singlePage = true)
+        {
+            if (singlePage)
+                MoveToNextSheet();
+
+            InsertDatas_ULOL(_htmlele);
+        }
+
+        private void FormCells_DL(HtmlElement _htmlele, bool singlePage = true)
+        {
+            if (singlePage)
+                MoveToNextSheet();
+
+            InsertDatas_DL(_htmlele);
+        }
+
+        private void FormCells_ULOL_MSHTML(IHTMLElement _htmlele, bool singlePage = true)
+        {
+            if (singlePage)
+                MoveToNextSheet();
+
+            InsertDatas_ULOL_MSHTML(_htmlele);
+        }
+
+        private void FormCells_DL_MSHTML(IHTMLElement _htmlele, bool singlePage = true)
+        {
+            if (singlePage)
+                MoveToNextSheet();
+
+            InsertDatas_DL_MSHTML(_htmlele);
+        }
+
         private void FormCells_MSHTML(IHTMLElement _htmlele, bool singlePage = true)
         {
             int count, maxCount = 0;
@@ -868,7 +870,7 @@ namespace Excellizer.Control
                 maxRowCount_Table++;
             }
             maxColumnCount_Table = maxCount;
-            if(singlePage)
+            if (singlePage)
                 MoveToNextSheet();
 
             InsertDatas_MSHTML();
@@ -989,45 +991,128 @@ namespace Excellizer.Control
                     String innerhtml = htmlele.InnerHtml == null ? "" : htmlele.InnerHtml;
                     innerhtml = OrganizeHtmls(innerhtml);
 
-                    ((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]).Value2 = innerhtml;
-                    Regex rg = new Regex("(링크 : (?<url>.*))");
-                    Match m = rg.Match(innerhtml);
-                    if (m.Groups["url"].Captures.Count == 1)
-                    {
-                        string url = m.Groups["url"].Value.EndsWith(")") ? m.Groups["url"].Value.Substring(0, m.Groups["url"].Value.Length - 1) : m.Groups["url"].Value;
-                        if (url.StartsWith("http://") || url.StartsWith("https://"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]), url);
-                        else if (url.StartsWith("./"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                webBrowser.Url.GetLeftPart(UriPartial.Path) + url);
-                        else if (url.StartsWith("../"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                webBrowser.Url.GetLeftPart(UriPartial.Authority) + url);
-                        else if (url.StartsWith(".../"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                webBrowser.Url.Authority + url);
-                        else
-                        {
-                            if (url.StartsWith("/"))
-                            {
-                                activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                    webBrowser.Url.GetLeftPart(UriPartial.Authority) + url);
-                            }
-                            else
-                            {
-                                activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                    webBrowser.Url.GetLeftPart(UriPartial.Path) + url);
-                            }
-                        }
-                    }
+                    PutDataWithLink(activeSheet, idxRow, idxCol, innerhtml);
 
                     idxCol = idxCol + colspan;
                 }
                 idxRow++;
             }
 
-            selectedX = idxRow + selectedX + 1;
-            selectedY = 0;
+            ResizeColumnsAndXY(activeSheet, idxRow, maxColumnCount_Table);
+        }
+
+        private void InsertDatas_ULOL(HtmlElement htmlele_ULOL)
+        {
+            var addins = Globals.ThisAddIn;
+            Excel.Worksheet activeSheet = addins.GetActiveWorksheet();
+            Excel.Range activeCell = (Excel.Range)addins.Application.ActiveCell;
+
+            int idxRow = 1, idxCol = 1, maxIdxCol = 0;
+            foreach (HtmlElement htmlele_LI in htmlele_ULOL.Children)
+            {                
+                idxCol = 1;
+                if (IsSeen(htmlele_LI.Style))
+                {
+                    foreach (HtmlElement htmlele in htmlele_LI.Children)
+                    {
+                        if (IsSeen(htmlele.Style))
+                        {
+                            String innerhtml = htmlele.InnerHtml == null ? "" : htmlele.InnerHtml;
+                            innerhtml = OrganizeHtmls(innerhtml);
+
+                            PutDataWithLink(activeSheet, idxRow, idxCol, innerhtml);
+                        }
+                        idxCol = idxCol + 1;
+                    }
+                }
+                if (maxIdxCol < (idxCol - 1))
+                    maxIdxCol = idxCol - 1;
+                idxRow++;
+            }
+
+            ResizeColumnsAndXY(activeSheet, idxRow, maxIdxCol);
+        }
+
+        private void InsertDatas_DL(HtmlElement htmlele_DL)
+        {
+            var addins = Globals.ThisAddIn;
+            Excel.Worksheet activeSheet = addins.GetActiveWorksheet();
+            Excel.Range activeCell = (Excel.Range)addins.Application.ActiveCell;
+
+            int idxRow = 1, idxCol = 1;
+            foreach (HtmlElement htmlele_D in htmlele_DL.Children)
+            {
+                idxCol = 1;
+                if (IsSeen(htmlele_D.Style))
+                {
+                    String innerhtml = htmlele_D.InnerHtml == null ? "" : htmlele_D.InnerHtml;
+                    innerhtml = OrganizeHtmls(innerhtml);
+
+                    PutDataWithLink(activeSheet, idxRow, idxCol, innerhtml);
+                    idxCol = idxCol + 1;
+                }
+                idxRow += (idxCol % 2);
+            }
+
+            ResizeColumnsAndXY(activeSheet, idxRow, 2);
+        }
+
+        private void InsertDatas_ULOL_MSHTML(IHTMLElement htmlele_ULOL)
+        {
+            var addins = Globals.ThisAddIn;
+            Excel.Worksheet activeSheet = addins.GetActiveWorksheet();
+            Excel.Range activeCell = (Excel.Range)addins.Application.ActiveCell;
+
+            int idxRow = 1, idxCol = 1, maxIdxCol = 0;
+            foreach (IHTMLElement htmlele_LI in htmlele_ULOL.children)
+            {
+                idxCol = 1;
+                if (IsSeen(htmlele_LI.style.toString()))
+                {
+                    foreach (IHTMLElement htmlele in htmlele_LI.children)
+                    {
+                        if (IsSeen(htmlele.style.toString()))
+                        {
+                            String innerhtml = htmlele.innerHTML == null ? "" : htmlele.innerHTML;
+                            innerhtml = OrganizeHtmls(innerhtml);
+
+                            PutDataWithLink(activeSheet, idxRow, idxCol, innerhtml);
+                        }
+                        idxCol = idxCol + 1;
+                    }
+                }
+                if (maxIdxCol < (idxCol - 1))
+                    maxIdxCol = idxCol - 1;
+                idxRow++;
+            }
+
+            ResizeColumnsAndXY(activeSheet, idxRow, maxIdxCol);
+        }
+
+        private void InsertDatas_DL_MSHTML(IHTMLElement htmlele_DL)
+        {
+            var addins = Globals.ThisAddIn;
+            Excel.Worksheet activeSheet = addins.GetActiveWorksheet();
+            Excel.Range activeCell = (Excel.Range)addins.Application.ActiveCell;
+
+            int idxRow = 1, idxCol = 1;
+            foreach (IHTMLElement htmlele_D in htmlele_DL.children)
+            {
+                idxCol = 1;
+                if (IsSeen(htmlele_D.style.toString()))
+                {
+                    String innerhtml = htmlele_D.innerHTML == null ? "" : htmlele_D.innerHTML;
+                    innerhtml = OrganizeHtmls(innerhtml);
+
+                    int _idxCol = idxCol % 2;
+                    PutDataWithLink(activeSheet, idxRow, _idxCol, innerhtml);
+
+                    idxCol = idxCol + 1;
+                }
+                idxRow += (idxCol % 2);
+            }
+
+            ResizeColumnsAndXY(activeSheet, idxRow, 2);
         }
 
         private void InsertDatas_MSHTML()
@@ -1209,6 +1294,17 @@ namespace Excellizer.Control
                 }
             }
 
+            ResizeColumnsAndXY(activeSheet, idxRow, maxColumnCount_Table);
+        }
+
+        private void ResizeColumnsAndXY(Excel.Worksheet activeSheet, int idxRow, int maxIdxCol)
+        {
+            for (int i = 1; i <= maxColumnCount_Table; i++)
+            {
+                activeSheet.Columns[1][i].AutoFit();
+                if (activeSheet.Columns[1][i].ColumnWidth > 30)
+                    activeSheet.Columns[1][i].ColumnWidth = 30; // activeSheet.Columns.EntireColumn.AutoFit();
+            }
             selectedX = idxRow + selectedX + 1;
             selectedY = 0;
         }
@@ -1219,12 +1315,7 @@ namespace Excellizer.Control
             Excel.Worksheet activeSheet = addins.GetActiveWorksheet();
             Excel.Range activeCell = (Excel.Range)addins.Application.ActiveCell;
 
-            int endRow = maxRowCount_Table;
-            int endCol = maxColumnCount_Table;
-            int idxRow = 1, idxCol = 1;
-
-            StyleGenerator sg = new StyleGenerator();
-            
+            int idxRow = 1, idxCol = 1, maxIdxCol = 0;
             foreach (List<HtmlElement> htmleleList in htmleleGroup)
             {
                 idxCol = 1;
@@ -1233,45 +1324,51 @@ namespace Excellizer.Control
                     String innerhtml = htmlele.InnerHtml == null ? "" : htmlele.InnerHtml;
                     innerhtml = OrganizeHtmls(innerhtml);
 
-                    ((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]).Value2 = innerhtml;
-                    Regex rg = new Regex("(링크 : (?<url>.*))");
-                    Match m = rg.Match(innerhtml);
-                    if (m.Groups["url"].Captures.Count == 1)
-                    {
-                        string url = m.Groups["url"].Value.EndsWith(")") ? m.Groups["url"].Value.Substring(0, m.Groups["url"].Value.Length - 1) : m.Groups["url"].Value;
-                        if (url.StartsWith("http://") || url.StartsWith("https://"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]), url);
-                        else if (url.StartsWith("./"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                webBrowser.Url.GetLeftPart(UriPartial.Path) + url);
-                        else if (url.StartsWith("../"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                webBrowser.Url.GetLeftPart(UriPartial.Authority) + url);
-                        else if (url.StartsWith(".../"))
-                            activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                webBrowser.Url.Authority + url);
-                        else
-                        {
-                            if (url.StartsWith("/"))
-                            {
-                                activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                    webBrowser.Url.GetLeftPart(UriPartial.Authority) + url);
-                            }
-                            else
-                            {
-                                activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
-                                    webBrowser.Url.GetLeftPart(UriPartial.Path) + url);
-                            }
-                        }
-                    }
+                    PutDataWithLink(activeSheet, idxRow, idxCol, innerhtml);
 
                     idxCol = idxCol + 1;
                 }
+                if (maxIdxCol < (idxCol - 1))
+                    maxIdxCol = idxCol - 1;
                 idxRow++;
             }
 
-            selectedX = idxRow + selectedX + 1;
-            selectedY = 0;
+            ResizeColumnsAndXY(activeSheet, idxRow, maxIdxCol);
+        }
+
+        private void PutDataWithLink(Excel.Worksheet activeSheet, int idxRow, int idxCol, String innerhtml)
+        {
+            ((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]).Value2 = innerhtml;
+            Regex rg = new Regex("(링크 : (?<url>.*))");
+            Match m = rg.Match(innerhtml);
+            if (m.Groups["url"].Captures.Count == 1)
+            {
+                string url = m.Groups["url"].Value.EndsWith(")") ? m.Groups["url"].Value.Substring(0, m.Groups["url"].Value.Length - 1) : m.Groups["url"].Value;
+                if (url.StartsWith("http://") || url.StartsWith("https://"))
+                    activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]), url);
+                else if (url.StartsWith("./"))
+                    activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
+                        webBrowser.Url.GetLeftPart(UriPartial.Path) + url);
+                else if (url.StartsWith("../"))
+                    activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
+                        webBrowser.Url.GetLeftPart(UriPartial.Authority) + url);
+                else if (url.StartsWith(".../"))
+                    activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
+                        webBrowser.Url.Authority + url);
+                else
+                {
+                    if (url.StartsWith("/"))
+                    {
+                        activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
+                            webBrowser.Url.GetLeftPart(UriPartial.Authority) + url);
+                    }
+                    else
+                    {
+                        activeSheet.Hyperlinks.Add(((Excel.Range)activeSheet.Cells[idxRow + selectedX, idxCol + selectedY]),
+                            webBrowser.Url.GetLeftPart(UriPartial.Path) + url);
+                    }
+                }
+            }
         }
 
         private String OrganizeHtmls(String innerhtml)
@@ -1307,19 +1404,17 @@ namespace Excellizer.Control
             innerhtml = Regex.Replace(innerhtml, "</label>", string.Empty);
             innerhtml = Regex.Replace(innerhtml, "<hr(.|\n)*?>", string.Empty);
             innerhtml = Regex.Replace(innerhtml, "<br(.|\n)*?/>", string.Empty);
-            /*
-            innerhtml = Regex.Replace(innerhtml, "<ul(.|\n)*?>", string.Empty);
-            innerhtml = Regex.Replace(innerhtml, "</ul>", string.Empty);
-            innerhtml = Regex.Replace(innerhtml, "<ol(.|\n)*?>", string.Empty);
-            innerhtml = Regex.Replace(innerhtml, "</ol>", string.Empty);
-            */
-            innerhtml = Regex.Replace(innerhtml, "<a(?<str1>.|\n)*?href=\"(?<str2>.*?)\"(?<str3>.|\n)*?>(?<str4>.*?)</a>", "${str4} (링크 : ${str2})");
+            innerhtml = Regex.Replace(innerhtml, "<a(?<str1>.|\n)*?href=\"(?<str2>.*?)\"(?<str3>.|\n)*?>(?<str4>.*?)</a>", "${str4}\n(링크 : ${str2})");
             innerhtml = Regex.Replace(innerhtml, "\t", string.Empty);
             innerhtml = Regex.Replace(innerhtml, "<(?<str1>.*?) style=\"(?<str2>.*?)display:(?<str3>.*?)none;(?<str4>.*?)\"(?<str5>.*?)>(?<str6>.*?)<(?<str7>.*?)>", "${str1}" == "${str7}" ? string.Empty : "<${str1} style=\"${str2}display:${str3}none;${str4}\"${str5}>${str6}<${str7}>");
             innerhtml = Regex.Replace(innerhtml, "&amp;", "&");
             innerhtml = Regex.Replace(innerhtml, "&quot;", "\"");
             innerhtml = Regex.Replace(innerhtml, "&lt;", "<");
             innerhtml = Regex.Replace(innerhtml, "&gt;", ">");
+            innerhtml = Regex.Replace(innerhtml, @"\n\s+", "\n");
+            innerhtml = Regex.Replace(innerhtml, @"\n", "\n");
+            innerhtml = Regex.Replace(innerhtml, @"\r\n\s+", "\r\n");
+            innerhtml = Regex.Replace(innerhtml, @"\r\n", "\r\n");
 
             return innerhtml;
         }
@@ -1379,7 +1474,7 @@ namespace Excellizer.Control
 
         public void MultiPageParse()
         {
-            if (buttonTargetDictionary.Count == 0 && buttonTargetDictionary_MSHTML.Count == 0 && buttonTargetDictionary_Level.Count == 0)
+            if (regionSelected == 0)
             {
                 MessageBox.Show("파싱할 영역이 없습니다.");
                 return;
@@ -1388,12 +1483,8 @@ namespace Excellizer.Control
             progressValue = 0;
             if (backgroundWorker_Init.IsBusy != true)
             {
-                // create a new instance of the alert form
                 alert_Init = new AlertForm();
-                // event handler for the Cancel button in AlertForm
-                ///alert_Init.Canceled += new EventHandler<EventArgs>(alertInitCancelButton_Click);
                 alert_Init.Show();
-                // Start the asynchronous operation.
                 backgroundWorker_Init.RunWorkerAsync();
             }
 
@@ -1402,42 +1493,29 @@ namespace Excellizer.Control
             wb.ScriptErrorsSuppressed = true;
             HtmlDocument htmldoc = wb.Document;
             targetTags = new Dictionary<HtmlElement, List<List<string>>>();
-            foreach (KeyValuePair<Button, HtmlElement> kvPair in buttonTargetDictionary)
+            foreach (KeyValuePair<Button, HtmlElement> kvPair in buttonTargetDictionary.Where(kv => kv.Key.BackColor == Color.Aqua))
             {
-                Button btn = kvPair.Key;
-                if (btn.BackColor == Color.Aqua)
-                {
-                    HtmlElement htmlele = kvPair.Value;
+                HtmlElement htmlele = kvPair.Value;
 
-                    /*if (htmlele.Id != null)
-                    {
-                        htmldoc.GetElementById(htmlele.Id);
-                    }*/
-                    List<List<String>> tagAnalytics = new List<List<string>>();
-                    if (htmlele.Id == null)
-                    {
-                        tagAnalytics = AnalyzeTarget(htmlele);
-                    }
-                    targetTags.Add(htmlele, tagAnalytics);
+                List<List<String>> tagAnalytics = new List<List<string>>();
+                if (htmlele.Id == null)
+                {
+                    tagAnalytics = AnalyzeTarget(htmlele);
                 }
+                targetTags.Add(htmlele, tagAnalytics);   
             }
 
             HTMLDocument doc = webBrowser.Document.DomDocument as HTMLDocument;
             targetTags_MSHTML = new Dictionary<IHTMLElement, List<List<string>>>();
-            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML)
+            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML.Where(kv => kv.Key.BackColor == Color.Aqua))
             {
-                Button btn = kvPair.Key;
-                if (btn.BackColor == Color.Aqua)
+                IHTMLElement htmlele_MSHTML = kvPair.Value;
+                List<List<String>> tagAnalytics = null;
+                if (htmlele_MSHTML.id == null)
                 {
-                    IHTMLElement htmlele_MSHTML = kvPair.Value;
-                    List<List<String>> tagAnalytics = null;
-                    if (htmlele_MSHTML.id == null)
-                    {
-                            tagAnalytics = AnalyzeTarget_MSHTML(htmlele_MSHTML);
-                        
-                    }
-                    targetTags_MSHTML.Add(htmlele_MSHTML, tagAnalytics);
+                    tagAnalytics = AnalyzeTarget_MSHTML(htmlele_MSHTML);
                 }
+                targetTags_MSHTML.Add(htmlele_MSHTML, tagAnalytics);
             }
             progressValue = 10;
 
@@ -1487,40 +1565,177 @@ namespace Excellizer.Control
             }
         }
 
+        private HtmlElement GetSameElement(Dictionary<HtmlElement, List<List<String>>> fromTags, List<List<String>> tags, HtmlElement sameEle)
+        {
+            foreach (KeyValuePair<HtmlElement, List<List<String>>> _kv in fromTags)
+            {
+                HtmlElement _htmlele = _kv.Key;
+                List<List<String>> _tags = _kv.Value;
+                int i = 0;
+                bool notEqual = false;
+                if (tags.Count == _tags.Count)
+                {
+                    foreach (List<String> tdTag in tags)
+                    {
+                        List<String> _tdTag = _tags[i];
+                        if (tdTag.Count == _tdTag.Count)
+                        {
+                            int j = 0;
+                            foreach (String eachTag in tdTag)
+                            {
+                                String _eachTag = _tdTag[j];
+                                if (!eachTag.Equals(_eachTag))
+                                {
+                                    notEqual = true;
+                                    break;
+                                }
+                                j++;
+                            }
+                            if (notEqual)
+                                break;
+                        }
+                        else
+                        {
+                            notEqual = true;
+                            break;
+                        }
+                        i++;
+                    }
+                }
+                else
+                    continue;
+
+                if (!notEqual)
+                {
+                    sameEle = _htmlele;
+                    break;
+                }
+            }
+            return sameEle;
+        }
+
         private void ParseEachPage(WebBrowser wb)
         {
             HtmlDocument htmldoc = wb.Document;
             Dictionary<HtmlElement, List<List<String>>> fromTags = new Dictionary<HtmlElement, List<List<string>>>();
             foreach (HtmlElement htmlele_WB in wb.Document.All)
             {
-                if (htmlele_WB.TagName.Equals("TABLE"))
+                if (IsSeen(htmlele_WB.Style) && (htmlele_WB.TagName.Equals("TABLE") || htmlele_WB.TagName.Equals("UL")
+                    || htmlele_WB.TagName.Equals("OL") || htmlele_WB.TagName.Equals("DL")))
                 {
                     fromTags.Clear();
-                    if (IsSeen(htmlele_WB.Style))
+
+                    if (htmlele_WB.Id == null)
                     {
-                        if (htmlele_WB.Id == null)
-                        {
-                            fromTags.Add(htmlele_WB, AnalyzeTarget(htmlele_WB));
-                        }
+                        fromTags.Add(htmlele_WB, AnalyzeTarget(htmlele_WB));
                     }
 
-                    foreach (KeyValuePair<Button, HtmlElement> kvPair in buttonTargetDictionary)
+                    string tagname = htmlele_WB.TagName;
+                    foreach (KeyValuePair<Button, HtmlElement> kvPair
+                        in buttonTargetDictionary.Where(kv => kv.Value.TagName.Equals(tagname) && kv.Key.BackColor == Color.Aqua))
                     {
-                        Button btn = kvPair.Key;
-                        if (btn.BackColor == Color.Aqua)
+                        HtmlElement htmlele = kvPair.Value;
+                        if (htmlele.Id != null)
                         {
-                            HtmlElement htmlele = kvPair.Value;
-                            if (htmlele.Id != null)
-                            {
+                            if (tagname.Equals("TABLE"))
                                 FormCells(htmldoc.GetElementById(htmlele.Id), false);
-                            }
-                            else if (targetTags.ContainsKey(htmlele))
+                            else if (tagname.Equals("UL") || tagname.Equals("OL"))
+                                FormCells_ULOL(htmldoc.GetElementById(htmlele.Id), false);
+                            else
+                                FormCells_DL(htmldoc.GetElementById(htmlele.Id), false);
+                        }
+                        else if (targetTags.ContainsKey(htmlele))
+                        {
+                            List<List<String>> tags = targetTags[htmlele];
+                            HtmlElement sameEle = null;
+                            sameEle = GetSameElement(fromTags, tags, sameEle);
+
+                            if (sameEle != null)
                             {
-                                List<List<String>> tags = targetTags[htmlele];
-                                HtmlElement sameEle = null;
-                                foreach (KeyValuePair<HtmlElement, List<List<String>>> _kv in fromTags)
+                                if (tagname.Equals("TABLE"))
                                 {
-                                    HtmlElement _htmlele = _kv.Key;
+                                    foreach (HtmlElement resultele in sameEle.Children)
+                                    {
+                                        if ((!IsSeen(resultele.Style))
+                                            && ((resultele.TagName.Equals("THEAD")) || (resultele.TagName.Equals("TBODY")) || (resultele.TagName.Equals("TFOOT"))))
+                                        {
+                                            FormCells(resultele, false);
+                                        }
+                                    }
+                                }
+                                else if (tagname.Equals("UL") || tagname.Equals("OL"))
+                                    FormCells_ULOL(sameEle, false);
+                                else
+                                    FormCells_DL(sameEle, false);
+                            }
+                            else
+                            {
+                                failCount++;
+                            }
+                        }
+                        else
+                        {
+                            failCount++;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ParseEachPage_MSHTML()
+        {
+            HTMLDocument doc = webBrowser.Document.DomDocument as HTMLDocument;
+            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML.Where(kv => kv.Key.BackColor == Color.Aqua))
+            {
+                IHTMLElement htmlele_MSHTML = kvPair.Value;
+                IHTMLElement parent = null;
+                foreach (KeyValuePair<IHTMLElement, Dictionary<IHTMLElement, List<IHTMLElement>>> kv in elementDicDictionary_MSHTML)
+                {
+                    if (kv.Value.ContainsKey(htmlele_MSHTML))
+                    {
+                        parent = kv.Key;
+                        break;
+                    }
+                }
+                int iframeIndex = parentFrameIndexDictionary[parent];
+                IHTMLWindow2 frame = (IHTMLWindow2)doc.frames.item(iframeIndex);
+
+                try
+                {
+                    HTMLDocument htmldoc_frame = (HTMLDocument)frame.document;
+
+                    string tagname = htmlele_MSHTML.tagName;
+                    if (htmlele_MSHTML.id != null)
+                    {
+                        if (tagname.Equals("TABLE"))
+                            FormCells_MSHTML(htmldoc_frame.getElementById(htmlele_MSHTML.id), false);
+                        else if (tagname.Equals("UL") || tagname.Equals("OL"))
+                            FormCells_ULOL_MSHTML(htmldoc_frame.getElementById(htmlele_MSHTML.id), false);
+                        else
+                            FormCells_DL_MSHTML(htmldoc_frame.getElementById(htmlele_MSHTML.id), false);
+                        continue;
+                    }
+                    else if (targetTags_MSHTML.ContainsKey(htmlele_MSHTML))
+                    {
+                        Dictionary<IHTMLElement, List<List<String>>> fromTags_MSHTML = new Dictionary<IHTMLElement, List<List<String>>>();
+                        foreach (IHTMLElement htmlele_Frame in htmldoc_frame.all)
+                        {
+                            if (htmlele_Frame.tagName.Equals(tagname))
+                            {
+                                fromTags_MSHTML.Clear();
+                                if (IsSeen(htmlele_Frame.style.toString()))
+                                {
+                                    if (htmlele_Frame.id == null)
+                                    {
+                                        fromTags_MSHTML.Add(htmlele_Frame, AnalyzeTarget_MSHTML(htmlele_Frame));
+                                    }
+                                }
+
+                                List<List<String>> tags = targetTags_MSHTML[htmlele_MSHTML];
+                                IHTMLElement sameEle = null;
+                                foreach (KeyValuePair<IHTMLElement, List<List<String>>> _kv in fromTags_MSHTML)
+                                {
+                                    IHTMLElement _htmlele = _kv.Key;
                                     List<List<String>> _tags = _kv.Value;
                                     int i = 0;
                                     bool notEqual = false;
@@ -1566,126 +1781,7 @@ namespace Excellizer.Control
 
                                 if (sameEle != null)
                                 {
-                                    foreach (HtmlElement resultele in sameEle.Children)
-                                    {
-                                        if ((!IsSeen(resultele.Style)) 
-                                            && ((resultele.TagName.Equals("THEAD"))||(resultele.TagName.Equals("TBODY"))||(resultele.TagName.Equals("TFOOT"))))
-                                        {
-                                            FormCells(resultele, false);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    failCount++;
-                                }
-                            }
-                            else
-                            {
-                                failCount++;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private void ParseEachPage_MSHTML()
-        {
-            HTMLDocument doc = webBrowser.Document.DomDocument as HTMLDocument;
-            foreach (KeyValuePair<Button, IHTMLElement> kvPair in buttonTargetDictionary_MSHTML)
-            {
-                Button btn = kvPair.Key;
-                if (btn.BackColor == Color.Aqua)
-                {
-                    IHTMLElement htmlele_MSHTML = kvPair.Value;
-                    IHTMLElement parent = null;
-                    foreach (KeyValuePair<IHTMLElement, Dictionary<IHTMLElement, List<IHTMLElement>>> kv in elementDicDictionary_MSHTML)
-                    {
-                        if (kv.Value.ContainsKey(htmlele_MSHTML))
-                        {
-                            parent = kv.Key;
-                            break;
-                        }
-                    }
-                    int iframeIndex = parentFrameIndexDictionary[parent];
-                    IHTMLWindow2 frame = (IHTMLWindow2)doc.frames.item(iframeIndex);
-
-                    try
-                    {
-                        HTMLDocument htmldoc_frame = (HTMLDocument)frame.document;
-
-                        if (htmlele_MSHTML.id != null)
-                        {
-                            FormCells_MSHTML(htmldoc_frame.getElementById(htmlele_MSHTML.id), false);
-                            continue;
-                        }
-                        else if (targetTags_MSHTML.ContainsKey(htmlele_MSHTML))
-                        {
-                            Dictionary<IHTMLElement, List<List<String>>> fromTags_MSHTML = new Dictionary<IHTMLElement, List<List<String>>>();
-                            foreach (IHTMLElement htmlele_Frame in htmldoc_frame.all)
-                            {
-                                if (htmlele_Frame.tagName.Equals("TABLE"))
-                                {
-                                    fromTags_MSHTML.Clear();
-                                    if (IsSeen(htmlele_Frame.style.toString()))
-                                    {
-                                        if (htmlele_Frame.id == null)
-                                        {
-                                            fromTags_MSHTML.Add(htmlele_Frame, AnalyzeTarget_MSHTML(htmlele_Frame));
-                                        }
-                                    }
-
-                                    //??List<List<String>> tagAnalytics = AnalyzeTarget_MSHTML(htmlele_MSHTML);
-                                    List<List<String>> tags = targetTags_MSHTML[htmlele_MSHTML];
-                                    IHTMLElement sameEle = null;
-                                    foreach (KeyValuePair<IHTMLElement, List<List<String>>> _kv in fromTags_MSHTML)
-                                    {
-                                        IHTMLElement _htmlele = _kv.Key;
-                                        List<List<String>> _tags = _kv.Value;
-                                        int i = 0;
-                                        bool notEqual = false;
-                                        if (tags.Count == _tags.Count)
-                                        {
-                                            foreach (List<String> tdTag in tags)
-                                            {
-                                                List<String> _tdTag = _tags[i];
-                                                if (tdTag.Count == _tdTag.Count)
-                                                {
-                                                    int j = 0;
-                                                    foreach (String eachTag in tdTag)
-                                                    {
-                                                        String _eachTag = _tdTag[j];
-                                                        if (!eachTag.Equals(_eachTag))
-                                                        {
-                                                            notEqual = true;
-                                                            break;
-                                                        }
-                                                        j++;
-                                                    }
-                                                    if (notEqual)
-                                                        break;
-                                                }
-                                                else
-                                                {
-                                                    notEqual = true;
-                                                    break;
-                                                }
-                                                i++;
-                                            }
-                                        }
-                                        else
-                                            continue;
-
-                                        if (!notEqual)
-                                        {
-                                            sameEle = _htmlele;
-                                            break;
-                                        }
-                                    }
-
-
-                                    if (sameEle != null)
+                                    if (tagname.Equals("TABLE"))
                                     {
                                         foreach (IHTMLElement resultele in sameEle.children)
                                         {
@@ -1696,22 +1792,26 @@ namespace Excellizer.Control
                                             }
                                         }
                                     }
+                                    else if (tagname.Equals("UL") || tagname.Equals("OL"))
+                                        FormCells_ULOL_MSHTML(sameEle, false);
                                     else
-                                    {
-                                        failCount++;
-                                    }
+                                        FormCells_DL_MSHTML(sameEle, false);
+                                }
+                                else
+                                {
+                                    failCount++;
                                 }
                             }
                         }
-                        else
-                        {
-                            failCount++;
-                        }
                     }
-                    catch
+                    else
                     {
-
+                        failCount++;
                     }
+                }
+                catch
+                {
+
                 }
             }
         }
@@ -1719,24 +1819,64 @@ namespace Excellizer.Control
         private List<List<String>> AnalyzeTarget(HtmlElement htmlele)
         {
             List<List<String>> tagAnalytics = new List<List<string>>();
-            foreach (HtmlElement htmlele_upper in htmlele.Children)
+            if (htmlele.TagName.Equals("TABLE"))
             {
-                if (IsSeen(htmlele.Style) && (htmlele_upper.TagName.Equals("TBODY")))
+                foreach (HtmlElement htmlele_upper in htmlele.Children)
                 {
-                    foreach (HtmlElement htmlele_tr in htmlele.Children)
+                    if (IsSeen(htmlele_upper.Style)
+                        && (htmlele_upper.TagName.Equals("THEAD") || htmlele_upper.TagName.Equals("TBODY") || htmlele_upper.TagName.Equals("TFOOT")))
                     {
-                        foreach (HtmlElement htmlele_td in htmlele_tr.Children)
+                        foreach (HtmlElement htmlele_tr in htmlele.Children)
                         {
-                            List<String> tags = new List<String>();
-                            foreach (HtmlElement htmlele_tdChild in htmlele_td.Children)
+                            foreach (HtmlElement htmlele_td in htmlele_tr.Children)
                             {
-                                if (IsSeen(htmlele_tdChild.Style))
+                                List<String> tags = new List<String>();
+                                foreach (HtmlElement htmlele_tdChild in htmlele_td.Children)
                                 {
-                                    tags.Add(htmlele_tdChild.TagName);
+                                    if (IsSeen(htmlele_tdChild.Style))
+                                    {
+                                        tags.Add(htmlele_tdChild.TagName);
+                                    }
                                 }
+                                tagAnalytics.Add(tags);
                             }
-                            tagAnalytics.Add(tags);
                         }
+                    }
+                }
+            }
+            else if(htmlele.TagName.Equals("UL") || htmlele.TagName.Equals("OL"))
+            {
+                foreach (HtmlElement htmlele_LI in htmlele.Children)
+                {
+                    if (IsSeen(htmlele_LI.Style))
+                    {
+                        List<String> tags = new List<String>();
+                        foreach (HtmlElement htmlele_Each in htmlele.Children)
+                        {
+                            if (IsSeen(htmlele_Each.Style))
+                            {
+                                tags.Add(htmlele_Each.TagName);
+                            }
+                        }
+                        tagAnalytics.Add(tags);
+                    }
+                }
+            }
+            else if (htmlele.TagName.Equals("DL"))
+            {
+                foreach (HtmlElement htmlele_DTDD in htmlele.Children)
+                {
+                    if (IsSeen(htmlele_DTDD.Style))
+                    {
+                        List<String> tags = new List<String>();
+                        foreach (HtmlElement htmlele_Each in htmlele_DTDD.Children)
+                        {
+                            if (IsSeen(htmlele_Each.Style))
+                            {
+                                tags.Add(htmlele_Each.TagName);
+                            }
+                        }
+                        tagAnalytics.Add(tags);
                     }
                 }
             }
@@ -1747,152 +1887,69 @@ namespace Excellizer.Control
         private List<List<String>> AnalyzeTarget_MSHTML(IHTMLElement htmlele_MSHTML)
         {
             List<List<String>> tagAnalytics = new List<List<string>>();
-            foreach(IHTMLElement htmlele_upper in htmlele_MSHTML.children)
+            if (htmlele_MSHTML.tagName.Equals("TABLE"))
             {
-                if(IsSeen(htmlele_upper.style.toString()) && (htmlele_upper.tagName.Equals("TBODY")))
+                foreach (IHTMLElement htmlele_upper in htmlele_MSHTML.children)
                 {
-                    foreach(IHTMLElement htmlele_tr in htmlele_MSHTML.children)
+                    if (IsSeen(htmlele_upper.style.toString())
+                        && (htmlele_upper.tagName.Equals("THEAD") || htmlele_upper.tagName.Equals("TBODY") || htmlele_upper.tagName.Equals("TFOOT")))
                     {
-                        foreach(IHTMLElement htmlele_td in htmlele_tr.children)
+                        foreach (IHTMLElement htmlele_tr in htmlele_MSHTML.children)
                         {
-                            List<String> tags = new List<String>();
-                            foreach(IHTMLElement htmlele_tdChild in htmlele_td.children)
+                            foreach (IHTMLElement htmlele_td in htmlele_tr.children)
                             {
-                                if(IsSeen(htmlele_tdChild.style.toString()))
+                                List<String> tags = new List<String>();
+                                foreach (IHTMLElement htmlele_tdChild in htmlele_td.children)
                                 {
-                                    tags.Add(htmlele_tdChild.tagName);
+                                    if (IsSeen(htmlele_tdChild.style.toString()))
+                                    {
+                                        tags.Add(htmlele_tdChild.tagName);
+                                    }
                                 }
+                                tagAnalytics.Add(tags);
                             }
-                            tagAnalytics.Add(tags);
                         }
+                    }
+                }
+            }
+            else if (htmlele_MSHTML.tagName.Equals("UL") || htmlele_MSHTML.tagName.Equals("OL"))
+            {
+                foreach (IHTMLElement htmlele_MSHTML_LI in htmlele_MSHTML.children)
+                {
+                    if (IsSeen(htmlele_MSHTML_LI.style.toString()))
+                    {
+                        List<String> tags = new List<String>();
+                        foreach (IHTMLElement htmlele_MSHTML_Each in htmlele_MSHTML.children)
+                        {
+                            if (IsSeen(htmlele_MSHTML_Each.style.toString()))
+                            {
+                                tags.Add(htmlele_MSHTML_Each.tagName);
+                            }
+                        }
+                        tagAnalytics.Add(tags);
+                    }
+                }
+            }
+            else if (htmlele_MSHTML.tagName.Equals("DL"))
+            {
+                foreach (IHTMLElement htmlele_MSHTML_THTD in htmlele_MSHTML.children)
+                {
+                    if (IsSeen(htmlele_MSHTML_THTD.style.toString()))
+                    {
+                        List<String> tags = new List<String>();
+                        foreach (IHTMLElement htmlele_MSHTML_Each in htmlele_MSHTML_THTD.children)
+                        {
+                            if (IsSeen(htmlele_MSHTML_Each.style.toString()))
+                            {
+                                tags.Add(htmlele_MSHTML_Each.tagName);
+                            }
+                        }
+                        tagAnalytics.Add(tags);
                     }
                 }
             }
 
             return tagAnalytics;
-        }
-
-        private List<List<String>> AnalyzeTarget_old(HtmlElement htmlele)
-        {
-            List<List<String>> tagAnalytics_prev = new List<List<string>>(),
-                tagAnalytics_current = new List<List<string>>();
-            foreach (HtmlElement htmlele_upper in htmlele.Children)
-            {
-                StyleGenerator sg = new StyleGenerator();
-                sg.ParseStyleString(htmlele_upper.Style == null ? "" : htmlele.Style);
-                if ((!sg.GetStyle("DISPLAY").Contains("none")) && (htmlele_upper.TagName.Equals("TBODY")))
-                {
-                    foreach (HtmlElement htmlele_tr in htmlele.Children)
-                    {
-                        tagAnalytics_current.Clear();
-                        foreach (HtmlElement htmlele_td in htmlele_tr.Children)
-                        {
-                            List<String> tags = new List<String>();
-                            foreach (HtmlElement htmlele_tdChild in htmlele_td.Children)
-                            {
-                                StyleGenerator sgChild = new StyleGenerator();
-                                sgChild.ParseStyleString(htmlele_tdChild.Style == null ? "" : htmlele_tdChild.Style);
-                                if (!sgChild.GetStyle("DISPLAY").Contains("none"))
-                                {
-                                    tags.Add(htmlele_tdChild.TagName);
-                                }
-                            }
-                            tagAnalytics_current.Add(tags);
-
-                            if (tagAnalytics_prev.Count != null)
-                            {
-                                tagAnalytics_prev = tagAnalytics_current;
-                            }
-                            else
-                            {
-                                if (tagAnalytics_prev.Count != tagAnalytics_current.Count)
-                                {
-                                    return new List<List<String>>();
-                                }
-                                else
-                                {
-                                    int i = 0;
-                                    foreach (List<String> prev in tagAnalytics_prev)
-                                    {
-                                        List<String> current = tagAnalytics_current[i];
-                                        int j = 0;
-                                        foreach (String _prev in prev)
-                                        {
-                                            String _current = current[j];
-                                            if (!(_prev.Equals(_current)))
-                                                return new List<List<String>>();
-                                            j++;
-                                        }
-                                        i++;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return tagAnalytics_prev;
-        }
-
-        private List<List<String>> AnalyzeTarget_MSHTML_old(IHTMLElement htmlele_MSHTML)
-        {
-            List<List<String>> tagAnalytics_prev = new List<List<string>>(),
-                tagAnalytics_current = new List<List<string>>();
-            foreach (IHTMLElement htmlele_upper in htmlele_MSHTML.children)
-            {
-                StyleGenerator sg = new StyleGenerator();
-                sg.ParseStyleString(htmlele_upper.style == null ? "" : htmlele_MSHTML.style.toString());
-                if ((!sg.GetStyle("DISPLAY").Contains("none")) && (htmlele_upper.tagName.Equals("TBODY")))
-                {
-                    foreach (IHTMLElement htmlele_tr in htmlele_MSHTML.children)
-                    {
-                        tagAnalytics_current.Clear();
-                        foreach (IHTMLElement htmlele_td in htmlele_tr.children)
-                        {
-                            List<String> tags = new List<String>();
-                            foreach (IHTMLElement htmlele_tdChild in htmlele_td.children)
-                            {
-                                if (!htmlele_tdChild.style.display.Contains("none"))
-                                {
-                                    tags.Add(htmlele_tdChild.tagName);
-                                }
-                            }
-                            tagAnalytics_current.Add(tags);
-                        }
-                        if (tagAnalytics_prev.Count == 0)
-                        {
-                            tagAnalytics_prev = tagAnalytics_current;
-                        }
-                        else
-                        {
-                            if (tagAnalytics_prev.Count != tagAnalytics_current.Count)
-                            {
-                                return new List<List<String>>();
-                            }
-                            else
-                            {
-                                int i = 0;
-                                foreach (List<String> prev in tagAnalytics_prev)
-                                {
-                                    List<String> current = tagAnalytics_current[i];
-                                    int j = 0;
-                                    foreach (String _prev in prev)
-                                    {
-                                        String _current = current[j];
-                                        if (!(_prev.Equals(_current)))
-                                            return new List<List<String>>();
-                                        j++;
-                                    }
-                                    i++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return tagAnalytics_prev;
         }
 
         #endregion
@@ -1904,8 +1961,7 @@ namespace Excellizer.Control
             int scrollTop = webBrowser.Document.GetElementsByTagName("HTML")[0].ScrollTop,
                 scrollLeft = webBrowser.Document.GetElementsByTagName("HTML")[0].ScrollLeft;
             int xDiff = docLocation.X - scrollLeft, yDiff = docLocation.Y - scrollTop;
-            if (((Math.Abs(xDiff) > 0) && (Math.Abs(xDiff) >= 10))
-                || ((Math.Abs(yDiff) > 0) && (Math.Abs(yDiff) >= 10)))
+            if ((Math.Abs(xDiff) >= 10) || (Math.Abs(yDiff) >= 10))
             {
                 docLocation.X = scrollLeft;
                 docLocation.Y = scrollTop;
@@ -1935,7 +1991,7 @@ namespace Excellizer.Control
                     btn.Visible = false;
                 }
             }
-
+            
             foreach (KeyValuePair<HtmlElement, Plexiglass> kvPair in plexiglassDictionary)
             {
                 Plexiglass plexiglass = kvPair.Value;
@@ -2305,9 +2361,12 @@ namespace Excellizer.Control
         {
             foreach (HtmlElement htmlele in elementListDictionary.Keys)
             {
-                if (IsSeen(htmlele.Style) && htmlele.TagName.Equals("TABLE"))
+                if (IsSeen(htmlele.Style))
                 {
-                    CreateButton(htmlele);
+                    if(htmlele.TagName.Equals("TABLE") || htmlele.TagName.Equals("UL") || htmlele.TagName.Equals("OL") || htmlele.TagName.Equals("DL"))
+                    {
+                        CreateButton(htmlele);
+                    }
                 }
             }
         }
@@ -2536,8 +2595,8 @@ namespace Excellizer.Control
             buttonTargetDictionary.Add(newButton, htmlele);
 
             Plexiglass plexiglass = new Plexiglass(this, x - docLocation.X, y + 33 - docLocation.Y,
-                x + htmlele.OffsetRectangle.Width > this.Width ? this.Width - x - 30: htmlele.OffsetRectangle.Width,
-                y + htmlele.OffsetRectangle.Height > this.Height ? this.Height - y : htmlele.OffsetRectangle.Height);
+                /*x + htmlele.OffsetRectangle.Width > this.Width ? this.Width - x - 30 :*/ htmlele.OffsetRectangle.Width,
+                /*y + htmlele.OffsetRectangle.Height > this.Height ? this.Height - y :*/ htmlele.OffsetRectangle.Height);
             plexiglass._offsetLeft = x;
             plexiglass._offsetTop = y;
             plexiglassDictionary.Add(htmlele, plexiglass);
@@ -2577,8 +2636,8 @@ namespace Excellizer.Control
 
             Plexiglass plexiglass = new Plexiglass(this,
                 x + parentX - docLocation.X, y + parentY + 33 - docLocation.Y, 
-                x + parentX + htmlele_MSHTML.offsetWidth > this.Width ? this.Width - (x + parentX) - 30: htmlele_MSHTML.offsetWidth,
-                y + parentY + htmlele_MSHTML.offsetHeight > this.Height ? this.Height - (y + parentY) : htmlele_MSHTML.offsetHeight);
+                /*x + parentX + htmlele_MSHTML.offsetWidth > this.Width ? this.Width - (x + parentX) - 30 :*/ htmlele_MSHTML.offsetWidth,
+                /*y + parentY + htmlele_MSHTML.offsetHeight > this.Height ? this.Height - (y + parentY) :*/ htmlele_MSHTML.offsetHeight);
                 //htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
             plexiglass._offsetLeft = x + parentX;
             plexiglass._offsetTop = y + parentY;
@@ -2593,7 +2652,7 @@ namespace Excellizer.Control
             SetElementXY(endele, out endX, out endY);
             width = endX + endele.ClientRectangle.Width - firstX;
             height = endY + endele.ClientRectangle.Height - firstY;
-            if (((width > 0) && (height > 0)) && ((firstX > 0) && (firstY > 0)))
+            if (((width > 0) && (height > 0)) && ((firstX >= 0) && (firstY >= 0)))
             {
                 //TODO
                 if (!plexiglassDictionary_Level.ContainsKey(htmleleGroup))
@@ -2624,8 +2683,8 @@ namespace Excellizer.Control
                     buttonTargetDictionary_Level.Add(newButton, htmleleGroup);
 
                     Plexiglass plexiglass = new Plexiglass(this, firstX - docLocation.X, firstY + 33 - docLocation.Y,
-                        firstX + width > this.Width ? this.Width - firstX - 30 : width,
-                        firstY + height > this.Height ? this.Height - firstY : height);
+                        /*firstX + width > this.Width ? this.Width - firstX - 30 :*/ width,
+                        /*firstY + height > this.Height ? this.Height - firstY :*/ height);
                     plexiglass._offsetLeft = firstX;
                     plexiglass._offsetTop = firstY;
                     plexiglassDictionary_Level.Add(htmleleGroup, plexiglass);
@@ -2673,11 +2732,13 @@ namespace Excellizer.Control
             {
                 newButton.BackColor = Color.Aqua;
                 plexiglassDictionary[buttonTargetDictionary[newButton]].Visible = true;
+                regionSelected++;
             }
             else
             {
                 newButton.BackColor = Color.LightGray;
                 plexiglassDictionary[buttonTargetDictionary[newButton]].Visible = false;
+                regionSelected--;
             }
         }
 
@@ -2717,11 +2778,13 @@ namespace Excellizer.Control
             {
                 newButton.BackColor = Color.Aqua;
                 plexiglassDictionary_MSHTML[buttonTargetDictionary_MSHTML[newButton]].Visible = true;
+                regionSelected++;
             }
             else
             {
                 newButton.BackColor = Color.LightGray;
                 plexiglassDictionary_MSHTML[buttonTargetDictionary_MSHTML[newButton]].Visible = false;
+                regionSelected--;
             }
         }
 
@@ -2761,11 +2824,13 @@ namespace Excellizer.Control
             {
                 newButton.BackColor = Color.Aqua;
                 plexiglassDictionary_Level[buttonTargetDictionary_Level[newButton]].Visible = true;
+                regionSelected++;
             }
             else
             {
                 newButton.BackColor = Color.LightGray;
                 plexiglassDictionary_Level[buttonTargetDictionary_Level[newButton]].Visible = false;
+                regionSelected--;
             }
         }
 
@@ -2839,127 +2904,6 @@ namespace Excellizer.Control
              * to avoid a NullReferenceException. */
             if (ea != null)
                 ea(this, e);
-        }
-
-        #endregion
-
-        #region etc(not using)
-
-        private Timer timer1;
-        public void InitTimer()
-        {
-            if (timer1 != null)
-            {
-                timer1.Stop();
-                timer1.Dispose();
-            }
-            timer1 = new Timer();
-            timer1.Tick += new EventHandler(timer1_Tick);
-            timer1.Interval = 2000; // in miliseconds
-            timer1.Start();
-        }
-
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            InitializeView();
-        }
-
-        [DllImport("wininet.dll", SetLastError = true)]
-        public static extern bool InternetGetCookieEx(
-            string url,
-            string cookieName,
-            StringBuilder cookieData,
-            ref int size,
-            Int32 dwFlags,
-            IntPtr lpReserved);
-
-        private const Int32 InternetCookieHttponly = 0x2000;
-
-        /// <summary>
-        /// Gets the URI cookie container.
-        /// </summary>
-        /// <param name="uri">The URI.</param>
-        /// <returns></returns>
-        public static CookieContainer GetUriCookieContainer(Uri uri)
-        {
-            CookieContainer cookies = null;
-            // Determine the size of the cookie
-            int datasize = 8192 * 16;
-            StringBuilder cookieData = new StringBuilder(datasize);
-            if (!InternetGetCookieEx(uri.ToString(), null, cookieData, ref datasize, InternetCookieHttponly, IntPtr.Zero))
-            {
-                if (datasize < 0)
-                    return null;
-                // Allocate stringbuilder large enough to hold the cookie
-                cookieData = new StringBuilder(datasize);
-                if (!InternetGetCookieEx(uri.ToString(), null, cookieData, ref datasize, InternetCookieHttponly, IntPtr.Zero))
-                    return null;
-            }
-            if (cookieData.Length > 0)
-            {
-                cookies = new CookieContainer();
-                cookies.SetCookies(uri, cookieData.ToString().Replace(';', ','));
-            }
-            return cookies;
-        }
-
-        [DllImport("wininet.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        static extern bool InternetSetCookie(string lpszUrlName, string lpszCookieName, string lpszCookieData);
-
-        [DllImport("wininet.dll", SetLastError = true)]
-        public static extern bool InternetGetCookie(string lpszUrl, string lpszCookieName, ref StringBuilder lpszCookieData, ref int lpdwSize);
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            //foreach (HtmlElement htmlele in elementListDictionary.Keys)
-            /*foreach (HtmlElement htmlele in webBrowser.Document.All)
-            {
-                //int width = htmlele.ClientRectangle.Width;
-                //int height = htmlele.ClientRectangle.Height;
-                int width = htmlele.OffsetRectangle.Width;
-                int height = htmlele.OffsetRectangle.Height;
-                if ((width != 0) || (height != 0))
-                {
-                    continue;
-                }
-            }*/
-
-            InitializeView();
-            /*
-            StyleGenerator sg = new StyleGenerator();
-
-            foreach (HtmlElement htmlele in webBrowser.Document.All)
-            {
-                if (htmlele.TagName.Equals("TABLE"))
-                {
-                    Plexiglass plexiglass = new Plexiglass(this, htmlele.OffsetRectangle.X + 10 - docLocation.X, htmlele.OffsetRectangle.Y + 48 - docLocation.Y, htmlele.OffsetRectangle.Width, htmlele.OffsetRectangle.Height);
-                    
-                    plexiglass.Visible = false;
-
-                    plexiglassDictionary.Add(htmlele, plexiglass);
-                }
-            }
-
-            foreach (KeyValuePair<IHTMLElement, Dictionary<IHTMLElement, List<IHTMLElement>>> kvPair in elementDicDictionary_MSHTML)
-            {
-                IHTMLElement htmleleParent = kvPair.Key;
-                Dictionary<IHTMLElement, List<IHTMLElement>> elementListDictionary_MSHTML = kvPair.Value;
-                foreach(IHTMLElement htmlele_MSHTML in elementListDictionary_MSHTML.Keys)
-                {
-                    if (htmlele_MSHTML.tagName.Equals("TABLE"))
-                    {
-                        Plexiglass plexiglass = new Plexiglass(this, 
-                            htmleleParent.offsetLeft + 10 - docLocation.X + htmlele_MSHTML.offsetLeft,
-                            htmleleParent.offsetTop + 48 - docLocation.Y + htmlele_MSHTML.offsetTop, 
-                            htmlele_MSHTML.offsetWidth, htmlele_MSHTML.offsetHeight);
-
-                        plexiglass.Visible = false;
-
-                        plexiglassDictionary_MSHTML.Add(htmlele_MSHTML, plexiglass);
-                    }
-                }
-            }
-             * */
         }
 
         #endregion

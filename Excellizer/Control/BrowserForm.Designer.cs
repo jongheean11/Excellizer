@@ -42,14 +42,15 @@ namespace Excellizer.Control
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripButton_Detect = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton_Parse = new System.Windows.Forms.ToolStripButton();
-            this.backgroundWorker_Init = new System.ComponentModel.BackgroundWorker();
             this.toolStripButton_MultiPage = new System.Windows.Forms.ToolStripButton();
+            this.backgroundWorker_Init = new System.ComponentModel.BackgroundWorker();
             this.webBrowser = new System.Windows.Forms.WebBrowser();
             this.topToolStrip.SuspendLayout();
             this.SuspendLayout();
             // 
             // topToolStrip
             // 
+            this.topToolStrip.CanOverflow = false;
             this.topToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripButton_Back,
             this.toolStripButton_Forward,
@@ -178,14 +179,6 @@ namespace Excellizer.Control
             this.toolStripButton_Parse.Text = "Parse";
             this.toolStripButton_Parse.Click += new System.EventHandler(this.toolStripButton_Parse_Click);
             // 
-            // backgroundWorker_Init
-            // 
-            this.backgroundWorker_Init.WorkerReportsProgress = true;
-            this.backgroundWorker_Init.WorkerSupportsCancellation = true;
-            this.backgroundWorker_Init.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker_Init_DoWork);
-            this.backgroundWorker_Init.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.backgroundWorker_Init_ProgressChanged);
-            this.backgroundWorker_Init.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker_Init_RunWorkerCompleted);
-            // 
             // toolStripButton_MultiPage
             // 
             this.toolStripButton_MultiPage.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
@@ -196,6 +189,14 @@ namespace Excellizer.Control
             this.toolStripButton_MultiPage.Size = new System.Drawing.Size(23, 30);
             this.toolStripButton_MultiPage.Text = "多";
             this.toolStripButton_MultiPage.Click += new System.EventHandler(this.toolStripButton_MultiPage_Click);
+            // 
+            // backgroundWorker_Init
+            // 
+            this.backgroundWorker_Init.WorkerReportsProgress = true;
+            this.backgroundWorker_Init.WorkerSupportsCancellation = true;
+            this.backgroundWorker_Init.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker_Init_DoWork);
+            this.backgroundWorker_Init.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.backgroundWorker_Init_ProgressChanged);
+            this.backgroundWorker_Init.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker_Init_RunWorkerCompleted);
             // 
             // webBrowser
             // 

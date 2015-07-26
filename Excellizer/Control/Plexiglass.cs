@@ -156,5 +156,11 @@ namespace Excellizer.Control
                 base.WndProc(ref m);
             }
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            disposing = true;
+            base.Dispose(disposing);
+        }
     }
 }

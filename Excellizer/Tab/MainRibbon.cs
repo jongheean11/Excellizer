@@ -137,5 +137,10 @@ namespace Excellizer.Tab
                 cookieSettingForm.Show();
             }
         }
+
+        private void StartEoBrowser()
+        {
+            
+        }
     }
 }
